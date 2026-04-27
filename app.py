@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file
 from datetime import datetime, timedelta
 import sqlite3
@@ -223,10 +226,14 @@ def index():
     return render_template('index.html')
 
 # ---------------- ログイン ----------------
+import os
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('password') == "k-20100401":
+        if request.form.get('password') == ADMIN_PASSWORD:
             session['login'] = True
             return redirect('/admin_menu')
         return render_template('login.html', error="パスワードが違います")
