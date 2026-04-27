@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>削除済み一覧</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f5f6fa;
+    margin: 0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* タイトル */
+h2 {
+    font-size: 26px;
+    margin-bottom: 15px;
+}
+
+/* 上部ボタン */
+.topbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.topbar a button {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #2c3e50;
+    color: white;
+    cursor: pointer;
+}
+
+.topbar a button:hover {
+    opacity: 0.85;
+}
+
+/* 検索エリア */
+form {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+input {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+/* ボタン */
+button {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+/* テーブル */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin-top: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+th {
+    background: #2c3e50;
+    color: white;
+}
+
+tr:hover {
+    background: #f1f1f1;
+}
+
+/* 削除済みの色感 */
+tbody tr {
+    background: #fff;
+}
+
+/* 復活ボタン */
+.restore-btn {
+    background: #3498db;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+/* 完全削除ボタン */
+.delete-btn {
+    background: #e74c3c;
+    margin-top: 10px;
+}
+
+/* チェックボックス */
+td input[type="checkbox"] {
+    transform: scale(1.2);
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🗑 削除済み一覧</h2>
+
+<!-- 上部ボタン -->
+<div class="topbar">
+    <a href="/export_deleted_excel"><button>📥 Excel出力</button></a>
+    <a href="/admin"><button>📋 予約一覧へ</button></a>
+    <a href="/admin_menu"><button>🏠 メインメニューへ戻る</button></a>
+    <a href="/logout"><button>ログアウト</button></a>
+</div>
+
+<!-- 検索 -->
+<form method="GET" action="/admin_deleted">
+
+    <div>
+        <div style="font-size:12px;">予約日</div>
+        <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}">
+        〜
+        <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}">
+    </div>
+
+    <div>
+        <div style="font-size:12px;">氏名</div>
+        <input type="text" name="name" value="{{ request.args.get('name','') }}">
+    </div>
+
+    <div>
+        <div style="font-size:12px;">コード</div>
+        <input type="text" name="code" value="{{ request.args.get('code','') }}">
+    </div>
+
+    <button type="submit">検索</button>
+    <button type="button" onclick="location.href='/admin_deleted'">リセット</button>
+
+</form>
+
+<!-- 一括削除 -->
+<form method="POST" action="/admin_bulk_delete">
+
+<label>
+    <input type="checkbox" id="all"> 全選択
+</label>
+
+<table>
+
+<thead>
+<tr>
+    <th>選択</th>
+    <th>予約日</th>
+    <th>予約時間</th>
+    <th>申込日時</th>
+    <th>コード</th>
+    <th>氏名</th>
+    <th>住所</th>
+    <th>電話</th>
+    <th>状態</th>
+    <th>操作</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in reservations %}
+<tr>
+
+    <td><input type="checkbox" name="ids" value="{{ r[0] }}"></td>
+
+    <td>{{ r[1] }}</td>
+    <td>{{ r[2] }}</td>
+    <td>{{ r[8] }}</td>
+    <td>{{ r[3] }}</td>
+    <td>{{ r[4] }}</td>
+    <td>{{ r[6] }}</td>
+    <td>{{ r[5] }}</td>
+    <td>{{ r[7] }}</td>
+
+    <td>
+        <button type="submit"
+                formaction="/admin_restore"
+                formmethod="POST"
+                name="id"
+                value="{{ r[0] }}"
+                class="restore-btn">
+            復活
+        </button>
+    </td>
+
+</tr>
+{% endfor %}
+
+</tbody>
+
+</table>
+
+<button type="submit"
+        class="delete-btn"
+        onclick="return confirm('選択したデータを完全削除しますか？');">
+    一括完全削除
+</button>
+
+</form>
+
+</div>
+
+<script>
+document.getElementById("all").addEventListener("change", function () {
+    let boxes = document.querySelectorAll("input[name='ids']");
+    boxes.forEach(b => b.checked = this.checked);
+});
+</script>
+
+</body>
+</html>

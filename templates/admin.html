@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ガス点検予約管理</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f5f6fa;
+}
+
+.container {
+    max-width: 1400px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* ===== 上部UI（ここから改善） ===== */
+
+.topbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+.topbar h2 {
+    margin:0;
+    font-size:22px;
+}
+
+.top-actions a {
+    margin-left:10px;
+    text-decoration:none;
+    background:#2c3e50;
+    color:white;
+    padding:6px 10px;
+    border-radius:6px;
+    font-size:13px;
+}
+
+.panel {
+    background:white;
+    padding:15px;
+    border-radius:12px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.06);
+    margin-bottom:15px;
+}
+
+/* 検索フォーム */
+.search-grid {
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap:10px;
+}
+
+.search-grid label {
+    font-size:12px;
+    color:#555;
+    margin-bottom:3px;
+    display:block;
+}
+
+.search-grid input,
+.search-grid select {
+    width:100%;
+    padding:8px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    font-size:13px;
+}
+
+/* ボタンエリア */
+.btn-area {
+    grid-column: 1 / -1;
+    display:flex;
+    gap:10px;
+}
+
+.btn-area button {
+    flex:1;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#4CAF50;
+    color:white;
+    cursor:pointer;
+    font-size:14px;
+}
+
+.btn-area button:last-child {
+    background:#777;
+}
+
+/* メニュー */
+.menu-buttons {
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+}
+
+.menu-buttons button {
+    flex:1;
+    padding:10px;
+    border-radius:8px;
+    border:none;
+    background:#3498db;
+    color:white;
+    cursor:pointer;
+}
+
+/* ===== ここから下は一切変更なし（一覧） ===== */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin-top: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+    font-size: 14px;
+}
+
+th {
+    background: #2c3e50;
+    color: white;
+}
+
+tr:hover {
+    background: #f1f1f1;
+}
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+}
+
+.new { background: #3498db; }
+.edit { background: #f39c12; }
+.delete { background: #e74c3c; }
+
+.action-cell {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+.confirm-label {
+    font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- ===== 上部UI（改善済み） ===== -->
+<div class="topbar">
+    <h2>ガス点検予約管理（一覧）</h2>
+    <div class="top-actions">
+        <a href="/export_excel">📥 Excel出力</a>
+        <a href="/logout">ログアウト</a>
+    </div>
+</div>
+
+<div class="panel">
+
+<form method="GET" action="/admin" class="search-grid">
+
+    <div>
+        <label>消費者コード</label>
+        <input type="text" name="code" value="{{ request.args.get('code','') }}">
+    </div>
+
+    <div>
+        <label>氏名</label>
+        <input type="text" name="name" value="{{ request.args.get('name','') }}">
+    </div>
+
+    <div>
+        <label>予約日（開始）</label>
+        <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}">
+    </div>
+
+    <div>
+        <label>予約日（終了）</label>
+        <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}">
+    </div>
+
+    <div>
+        <label>申込日（開始）</label>
+        <input type="date" name="created_from" value="{{ request.args.get('created_from','') }}">
+    </div>
+
+    <div>
+        <label>申込日（終了）</label>
+        <input type="date" name="created_to" value="{{ request.args.get('created_to','') }}">
+    </div>
+
+    <div>
+        <label>確定状態</label>
+        <select name="confirmed">
+            <option value="">すべて</option>
+            <option value="1" {% if request.args.get('confirmed')=='1' %}selected{% endif %}>確定</option>
+            <option value="0" {% if request.args.get('confirmed')=='0' %}selected{% endif %}>未確定</option>
+        </select>
+    </div>
+
+    <div class="btn-area">
+        <button type="submit">🔍 検索</button>
+        <button type="button" onclick="location.href='/admin'">リセット</button>
+    </div>
+
+</form>
+
+<div class="menu-buttons">
+    <form action="/admin_menu" method="get">
+        <button type="submit">←メインメニューへ戻る</button>
+    </form>
+
+    <form action="/admin_deleted" method="get">
+        <button type="submit">削除済み一覧</button>
+    </form>
+</div>
+
+</div>
+
+<!-- ===== 一覧（ここは完全そのまま） ===== -->
+<table>
+
+<thead>
+<tr>
+    <th>予約日</th>
+    <th>予約時間</th>
+    <th>申込日時</th>
+    <th>消費者コード</th>
+    <th>氏名</th>
+    <th>住所</th>
+    <th>電話</th>
+    <th>メールアドレス</th>
+    <th>状態</th>
+    <th>操作</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in reservations %}
+
+<tr>
+    <td>{{ r[1] }}</td>
+    <td class="time">{{ r[2] }}</td>
+    <td>{{ r[9] }}</td>
+    <td>{{ r[3] }}</td>
+    <td>{{ r[4] }}</td>
+    <td>{{ r[6] }}</td>
+    <td>{{ r[5] }}</td>
+    <td>{{ r[7] or "" }}</td>
+
+    <td>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span class="badge
+            {% if r[8]=='新規' %}new{% endif %}
+            {% if r[8]=='変更' %}edit{% endif %}
+            {% if r[8]=='削除' %}delete{% endif %}
+            ">
+                {{ r[8] }}
+            </span>
+
+            {% if r[10] == 1 %}
+                <span style="color:green; font-size:12px;">確定</span>
+            {% else %}
+                <span style="color:orange; font-size:12px;">確認中</span>
+            {% endif %}
+
+            <form method="POST" action="/toggle_confirm" style="margin:0;">
+                <input type="hidden" name="id" value="{{ r[0] }}">
+                <label class="confirm-label">
+                    <input type="checkbox" name="confirmed"
+                           onchange="this.form.submit()"
+                           {% if r[10] == 1 %}checked{% endif %}>
+                    確定
+                </label>
+            </form>
+
+        </div>
+    </td>
+
+    <td class="action-cell">
+
+        <a href="/admin_edit/{{ r[0] }}">
+            <button type="button">編集</button>
+        </a>
+
+        <form method="POST" action="/admin_delete"
+              onsubmit="return confirm('削除しますか？');">
+            <input type="hidden" name="id" value="{{ r[0] }}">
+            <button type="submit" style="background:red;color:white;">
+                削除
+            </button>
+        </form>
+
+    </td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+<script>
+function formatRange(t){
+    if(!t) return "";
+    if(t.includes("～")) return t;
+
+    let [h,m] = t.split(":").map(Number);
+
+    let end = new Date();
+    end.setHours(h);
+    end.setMinutes(m + 30);
+
+    let endH = end.getHours().toString().padStart(2,'0');
+    let endM = end.getMinutes().toString().padStart(2,'0');
+
+    return `${t}～${endH}:${endM}`;
+}
+
+document.querySelectorAll(".time").forEach(el=>{
+    el.innerText = formatRange(el.innerText);
+});
+</script>
+
+</body>
+</html>

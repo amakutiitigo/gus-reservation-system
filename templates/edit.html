@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予約変更</title>
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: sans-serif;
+    background: #f5f5f5;
+    font-size: 24px;
+    line-height: 1.6;
+}
+.container {
+    max-width: 700px;
+    margin: auto;
+    padding: 15px;
+    box-sizing: border-box;
+}
+h2 {
+    font-size: 36px;
+    margin-bottom: 15px;
+}
+.notice {
+    padding: 15px;
+    background: #eee;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    font-size: 20px;
+}
+.current-box {
+    margin-bottom: 15px;
+    font-size: 22px;
+}
+#calendar {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: white;
+    border-radius: 12px;
+    padding: 10px;
+}
+.fc-toolbar-title {
+    font-size: 26px !important;
+}
+.fc .fc-daygrid-day {
+    aspect-ratio: 1 / 1;
+    height: auto !important;
+}
+.fc .fc-daygrid-day-frame {
+    height: 100%;
+}
+.fc .fc-daygrid-day-top {
+    padding: 4px;
+    display: flex;
+    justify-content: flex-end;
+}
+.fc .fc-daygrid-day-number {
+    font-size: 18px;
+}
+.bg-holiday { background: #eee !important; }
+.bg-current { background: #90caf9 !important; }
+.bg-selected { background: #ffe082 !important; }
+
+input, select {
+    width: 100%;
+    padding: 18px;
+    margin-top: 8px;
+    font-size: 24px;
+    border-radius: 10px;
+}
+button {
+    width: 100%;
+    padding: 20px;
+    margin-top: 15px;
+    font-size: 26px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 10px;
+}
+
+.current-time-option {
+    background: #90caf9;
+    font-weight: bold;
+}
+
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>予約変更</h2>
+
+<div class="notice">※現在の予約が本日で、時間のみ変更したい場合は、お電話にてご相談ください。</div>
+<div class="notice">※予約は24時間後以降のみ可能です。</div>
+<div class="notice">※土日祝日は予約不可。その他、予約できない日時は選択できません。</div>
+
+<div class="current-box">
+<strong>現在の予約</strong><br>
+📅 {{ data[1] }}<br>
+⏰ <span id="currentTime"></span>
+</div>
+
+<div>お客様コード</div>
+<input type="text" value="{{ session.get('code') }}" readonly>
+
+<div style="
+    background:#fff3cd;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:10px;
+    font-size:22px;
+    font-weight:bold;
+    text-align:center;
+">
+    予約可能期間：<br>{{ start_date }} ～ {{ end_date }}
+</div>
+
+<div id="calendar"></div>
+
+<div>予約時間</div>
+<select id="time_select"></select>
+
+<form method="POST" action="/edit_confirm">
+<input type="hidden" name="date" id="date" value="{{ data[1] }}">
+<input type="hidden" name="time" id="time" value="{{ data[2] }}">
+
+<div>氏名</div>
+<input type="text" name="name" value="{{ data[3] }}" required>
+
+<div>電話番号</div>
+<input type="text" name="phone" value="{{ data[4] }}" required>
+
+<div>住所</div>
+<input type="text" name="address" value="{{ data[5] }}" required>
+
+<div>メールアドレス（任意）</div>
+<input type="email" name="email" value="{{ data[6] }}">
+
+<button type="submit">確認画面へ</button>
+</form>
+
+</div>
+
+<script>
+
+// ★期間
+let startDate = "{{ start_date }}";
+let endDate = "{{ end_date }}";
+
+function addOneDay(dateStr){
+    let d = new Date(dateStr);
+    d.setDate(d.getDate() + 1);
+
+    let y = d.getFullYear();
+    let m = String(d.getMonth()+1).padStart(2,'0');
+    let da = String(d.getDate()).padStart(2,'0');
+
+    return `${y}-${m}-${da}`;
+}
+
+let initDate = "{{ data[1] or '' }}";
+let initTime = "{{ data[2][:5] if data and data[2] else '' }}";
+let selectedDate = initDate;
+
+function formatRange(t){
+    if(!t || !t.includes(":")) return "";
+    let [h,m] = t.split(":").map(Number);
+
+    let end = new Date();
+    end.setHours(h);
+    end.setMinutes(m + 30);
+
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}～${String(end.getHours()).padStart(2,'0')}:${String(end.getMinutes()).padStart(2,'0')}`;
+}
+
+let holidays = [];
+
+async function loadHolidays(){
+    const res = await fetch("https://holidays-jp.github.io/api/v1/date.json");
+    holidays = Object.keys(await res.json());
+}
+
+function isHoliday(dateStr){
+
+    if(!dateStr || typeof dateStr !== "string") return false;
+
+    if(holidays.includes(dateStr)) return true;
+
+    if(!dateStr.includes("-")) return false;
+
+    let [y,m,d] = dateStr.split("-").map(Number);
+
+    if(!y || !m || !d) return false;
+
+    let date = new Date(y, m - 1, d);
+
+    let day = date.getDay();
+
+    return day === 0 || day === 6;
+}
+
+function isOutOfRange(str){
+    if(startDate && str < startDate) return true;
+    if(endDate && str > endDate) return true;
+    return false;
+}
+
+function loadTimes(date){
+    fetch('/get_times?date=' + date)
+    .then(res => res.json())
+    .then(data => {
+
+        let select = document.getElementById("time_select");
+        select.innerHTML = "";
+
+        let found = false;
+
+        data.forEach(t => {
+
+            let opt = document.createElement("option");
+            opt.value = t;
+            opt.text = formatRange(t);
+
+            if(t === initTime){
+                opt.selected = true;
+                opt.classList.add("current-time-option");
+                found = true;
+            }
+
+            select.appendChild(opt);
+        });
+
+        if(!found && initTime){
+            let opt = document.createElement("option");
+            opt.value = initTime;
+            opt.text = formatRange(initTime);
+            opt.selected = true;
+            opt.classList.add("current-time-option");
+            select.appendChild(opt);
+        }
+
+        document.getElementById("time").value = select.value;
+
+        select.onchange = () => {
+            document.getElementById("time").value = select.value;
+        };
+    });
+}
+
+document.addEventListener("DOMContentLoaded", async function(){
+
+    await loadHolidays();
+
+    document.getElementById("currentTime").innerText =
+        initTime ? formatRange(initTime) : "";
+
+    if(initDate){
+        loadTimes(initDate);
+    }
+
+    let calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
+
+        initialView: "dayGridMonth",
+        locale: "ja",
+        height: "auto",
+        firstDay: 1,
+
+        validRange: (startDate && endDate) ? {
+            start: startDate,
+            end: addOneDay(endDate)
+        } : undefined,
+
+        showNonCurrentDates: false,
+        fixedWeekCount: false,
+
+        dayCellClassNames: function(arg){
+
+            let d = arg.date;
+
+            let y = d.getFullYear();
+            let m = String(d.getMonth()+1).padStart(2,'0');
+            let da = String(d.getDate()).padStart(2,'0');
+
+            let str = `${y}-${m}-${da}`;
+
+            let classes = [];
+
+            if(isHoliday(str)){
+                classes.push("bg-holiday");
+            }
+
+            if(str === initDate){
+                classes.push("bg-current");
+            }
+
+            if(str === selectedDate){
+                classes.push("bg-selected");
+            }
+
+            return classes;
+        },
+
+        dateClick: function(info){
+
+            let selected = info.dateStr;
+            let d = new Date(selected);
+
+            if(isHoliday(selected)){
+                alert("土日祝は予約できません");
+                return;
+            }
+
+            if(isOutOfRange(selected)){
+                alert("この日は予約できません");
+                return;
+            }
+
+            selectedDate = selected;
+            document.getElementById("date").value = selected;
+
+            loadTimes(selected);
+            calendar.render();
+        }
+    });
+
+    calendar.render();
+});
+</script>
+
+<script>
+document.querySelector('form[action="/edit_confirm"]').addEventListener("submit", function(e){
+
+    let newDate = document.getElementById("date").value;
+    let newTime = document.getElementById("time").value;
+
+    if(newDate === initDate && newTime === initTime){
+        alert("変更内容がありません");
+        e.preventDefault();
+    }
+
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予約ブロック管理</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f9;
+    margin: 0;
+}
+
+/* 全体 */
+.container {
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* 上部ボタン */
+.topbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.topbar a {
+    display: inline-block;
+    padding: 10px 14px;
+    background: #2c3e50;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.topbar a:hover {
+    opacity: 0.85;
+}
+
+/* メイン戻るボタン（追加） */
+.main-back {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    padding: 12px 14px;
+    background: #777;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+/* タイトル */
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 26px;
+}
+
+/* カード */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+}
+
+/* 入力 */
+form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+input {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+/* 追加ボタン */
+button {
+    padding: 12px 16px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    background: #4CAF50;
+    color: white;
+}
+
+/* テーブル */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+th {
+    background: #2c3e50;
+    color: white;
+    padding: 12px;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+tr:hover {
+    background: #f8f8f8;
+}
+
+/* 削除 */
+a {
+    color: #e74c3c;
+    text-decoration: none;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- ★追加：メインメニュー戻る（最上部） -->
+<a href="/admin_menu" class="main-back">← メインメニューへ戻る</a>
+
+<h2>予約ブロック管理</h2>
+
+<!-- ★上部メニュー -->
+<div class="topbar">
+    <a href="/export_block_excel">📥 Excel出力</a>
+    <a href="/admin">📋 予約一覧へ</a>
+    <a href="/logout">ログアウト</a>
+</div>
+
+<!-- 追加 -->
+<div class="card">
+
+<form method="POST" action="/add_block">
+
+    <input type="date" name="date" required>
+    <input type="time" name="start_time" required>
+    <input type="time" name="end_time" required>
+
+    <button type="submit">＋ 追加</button>
+
+</form>
+
+</div>
+
+<!-- 一覧 -->
+<table>
+
+<tr>
+    <th>日付</th>
+    <th>開始</th>
+    <th>終了</th>
+    <th>操作</th>
+</tr>
+
+{% for b in blocks %}
+<tr>
+    <td>{{ b[1] }}</td>
+    <td>{{ b[2] }}</td>
+    <td>{{ b[3] }}</td>
+    <td>
+        <a href="/delete_block/{{ b[0] }}">解除</a>
+    </td>
+</tr>
+{% endfor %}
+
+</table>
+
+</div>
+
+</body>
+</html>

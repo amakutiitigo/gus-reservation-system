@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>変更確認</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: sans-serif;
+    background: #f5f5f5;
+
+    /* ★全体しっかり大きく */
+    font-size: 26px;
+    line-height: 1.8;
+}
+
+/* コンテナ */
+.container {
+    max-width: 700px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* タイトル */
+h2 {
+    font-size: 40px;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+/* カード */
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 14px;
+}
+
+/* 各行 */
+.card p {
+    margin: 14px 0;
+}
+
+/* 値を強調 */
+.big {
+    font-size: 32px;
+    font-weight: bold;
+}
+
+/* ボタン共通 */
+button {
+    width: 100%;
+    padding: 22px;
+    font-size: 28px;
+    margin-top: 20px;
+    border-radius: 12px;
+    border: none;
+    color: white;
+    cursor: pointer;
+}
+
+/* 確認 */
+.btn-confirm {
+    background: #ff9800;
+}
+
+/* 戻る */
+.btn-back {
+    background: #999;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>予約変更内容の確認</h2>
+
+<div class="card">
+    <p>日付：<span class="big">{{ data.date }}</span></p>
+    <p>時間：<span class="big" id="time_view"></span></p>
+    <p>氏名：{{ data.name }}</p>
+    <p>電話：{{ data.phone }}</p>
+    <p>住所：{{ data.address }}</p>
+    <p>メール：{{ data.email }}</p>
+</div>
+
+<!-- ★送信フォーム -->
+<form method="POST" action="/edit_save">
+
+    <input type="hidden" name="date" value="{{ data.date }}">
+    <input type="hidden" name="time" value="{{ data.time }}">
+    <input type="hidden" name="name" value="{{ data.name }}">
+    <input type="hidden" name="phone" value="{{ data.phone }}">
+    <input type="hidden" name="address" value="{{ data.address }}">
+    <input type="hidden" name="email" value="{{ data.email }}">
+
+    <button type="submit" class="btn-confirm">
+        この内容で変更する
+    </button>
+
+</form>
+
+<!-- 戻る -->
+<form action="/edit">
+    <button type="submit" class="btn-back">
+        戻る
+    </button>
+</form>
+
+</div>
+
+<script>
+function formatRange(t){
+    if(!t || !t.includes(":")) return "";
+
+    let [h,m] = t.split(":").map(Number);
+
+    let end = new Date();
+    end.setHours(h);
+    end.setMinutes(m + 30);
+
+    let eh = String(end.getHours()).padStart(2,'0');
+    let em = String(end.getMinutes()).padStart(2,'0');
+
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}～${eh}:${em}`;
+}
+
+document.getElementById("time_view").innerText =
+    formatRange("{{ data.time }}");
+</script>
+
+<script>
+window.addEventListener("load", function(){
+
+    let form = document.querySelector('form[action="/edit_save"]');
+
+    form.addEventListener("submit", function(){
+        document.getElementById("loadingOverlay").style.display = "flex";
+    });
+
+});
+</script>
+
+<div id="loadingOverlay" style="
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.4);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+">
+    <div style="
+        background:white;
+        padding:30px 40px;
+        border-radius:10px;
+        text-align:center;
+        font-size:20px;
+    ">
+        <div style="font-size:40px;">⏳</div>
+        しばらくお待ちください...
+    </div>
+</div>
+
+</body>
+</html>

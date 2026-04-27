@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>変更完了</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: sans-serif;
+    background: #f4f6f9;
+
+    /* ★見やすいサイズ */
+    font-size: 24px;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.container {
+    max-width: 700px;
+    margin: 60px auto;
+    padding: 20px;
+}
+
+/* カード */
+.card {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+/* 完了メッセージ */
+.success {
+    font-size: 34px;
+    color: #ff9800;
+    margin-bottom: 20px;
+}
+
+/* サブ */
+.sub {
+    font-size: 22px;
+    margin-bottom: 20px;
+}
+
+/* 情報 */
+.info {
+    text-align: left;
+    margin-top: 20px;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 10px;
+}
+
+/* 値強調 */
+.big {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+/* ボタン */
+.btn {
+    display: block;
+    width: 100%;
+    padding: 22px;
+    font-size: 26px;
+    background: #2196F3;
+    color: white;
+    border-radius: 12px;
+    text-decoration: none;
+    margin-top: 25px;
+    box-sizing: border-box;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<div class="success">✏️ 予約を変更しました</div>
+
+<div class="sub">変更が完了しました。</div>
+
+<div class="info">
+    <p><b>日付：</b><span class="big">{{ data.date }}</span></p>
+    <p><b>時間：</b><span class="big" id="time_view"></span></p>
+    <p><b>名前：</b>{{ data.name }}</p>
+</div>
+
+<a href="/" class="btn">トップへ戻る</a>
+
+</div>
+
+</div>
+
+<script>
+function formatRange(t){
+    if(!t || !t.includes(":")) return "";
+
+    let [h,m] = t.split(":").map(Number);
+
+    let end = new Date();
+    end.setHours(h);
+    end.setMinutes(m + 30);
+
+    let eh = String(end.getHours()).padStart(2,'0');
+    let em = String(end.getMinutes()).padStart(2,'0');
+
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}～${eh}:${em}`;
+}
+
+document.getElementById("time_view").innerText =
+    formatRange("{{ data.time }}");
+</script>
+
+</body>
+</html>

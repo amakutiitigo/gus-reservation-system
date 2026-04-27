@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>予約可能期間設定</title>
+
+<style>
+body {
+    font-family: sans-serif;
+    text-align: center;
+    padding-top: 50px;
+}
+
+.container {
+    width: 300px;
+    margin: auto;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 16px;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 15px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    background: #4CAF50;
+    color: white;
+}
+</style>
+</head>
+
+<body>
+
+<h2>予約可能期間設定</h2>
+
+<div class="container">
+
+<form method="POST" action="/save_setting">
+
+    <div>開始日</div>
+    <input type="date" name="start_date" value="{{ start }}" required>
+
+    <div>終了日</div>
+    <input type="date" name="end_date" value="{{ end }}" required>
+
+    <button type="submit">保存</button>
+
+</form>
+
+<form method="POST" action="/clear_setting">
+    <button type="submit" style="background:#f44336;">
+        予約可能期間を解除
+    </button>
+</form>
+
+<form action="/admin_menu">
+    <button type="submit">戻る</button>
+</form>
+
+</div>
+
+</body>
+</html>
