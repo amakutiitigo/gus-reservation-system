@@ -233,9 +233,14 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('password') == ADMIN_PASSWORD:
+
+        pw = request.form.get('password')
+        print("PASSWORD INPUT =", repr(pw))  # ←ここ
+
+        if pw == "k-20100401":
             session['login'] = True
             return redirect('/admin_menu')
+
         return render_template('login.html', error="パスワードが違います")
 
     return render_template('login.html')
