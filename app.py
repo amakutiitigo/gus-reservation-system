@@ -129,7 +129,11 @@ def send_mail(row):
     msg["Subject"] = str(Header("予約確定のお知らせ", "utf-8"))
 
     # ★ここも重要（FromもUTF-8にする）
-    msg["From"] = formataddr((str(Header("ガス点検", "utf-8")), "penseries2tensen+gus@gmail.com"))
+    SMTP_USER = os.getenv("SMTP_USER")
+
+    msg["From"] = formataddr(
+        (str(Header("ガス点検", "utf-8")), SMTP_USER)
+    )
 
     msg["To"] = email
 
