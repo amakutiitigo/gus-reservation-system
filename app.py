@@ -1,13 +1,13 @@
-from supabase import create_client
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
+from supabase import create_client
 
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_KEY")
 )
-
-from dotenv import load_dotenv
-load_dotenv()
 
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file
 from datetime import datetime, timedelta
@@ -914,46 +914,39 @@ def create_confirm():
     if not code:
         return "ログイン情報なし"
 
+    # ---------------- 予約時間チェック ----------------
     target_dt = datetime.strptime(
         data['date'] + " " + data['time'][:5],
         "%Y-%m-%d %H:%M"
     ).replace(tzinfo=JST)
 
-    # ★ここが本質（今から24時間）
     limit_time = datetime.now(JST) + timedelta(hours=24)
 
     if target_dt < limit_time:
         return "24時間後以降の予約しかできません"
 
-    # ★通常処理
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # ---------------- Supabase保存 ----------------
+    supabase.table("reservations").insert({
+        "date": data["date"],
+        "time": data["time"][:5],
+        "consumer_code": code,
+        "name": data["name"],
+        "phone": data["phone"],
+        "address": data["address"],
+        "email": data["email"],
+        "action": "新規",
+        "is_deleted": False,
+        "is_confirmed": False,
+        "created_at": datetime.now(JST).isoformat()
+    }).execute()
 
-    c.execute("""
-        INSERT INTO reservations
-        (date,time,consumer_code,name,phone,address,email,action,created_at)
-        VALUES (?,?,?,?,?,?,?,?,?)
-    """, (
+    # ---------------- メール送信 ----------------
+    mail_new(
         data['date'],
         data['time'][:5],
-        code,
         data['name'],
-        data['phone'],
-        data['address'],
-        data['email'],
-        "新規",
-        datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-    ))
-
-    conn.commit()
-    conn.close()
-
-    mail_new(
-    data['date'],
-    data['time'][:5],
-    data['name'],
-    data['phone']
-)
+        data['phone']
+    )
 
     return render_template("complete.html", data=data)
 
