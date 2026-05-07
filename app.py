@@ -698,7 +698,11 @@ def export_block_excel():
     ws.append(["日付", "開始", "終了"])
 
     for r in rows:
-        ws.append(r)
+        ws.append([
+        r.get("data"),
+        r.get("start_time"),
+        r.get("end_time")
+    ])
 
     output = io.BytesIO()
     wb.save(output)
