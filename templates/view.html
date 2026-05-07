@@ -76,43 +76,42 @@ h2 {
 
 <body>
 
-<div class="container">
+    <div class="container">
 
-    {% if data[7]|int == 1 %}
-    <p style="color:green;"><b>予約確定</b></p>
-{% else %}
-    <p style="color:orange;"><b>予約確認中</b></p>
-{% endif %}
+        {% if data %}
 
-{% if data %}
+            {% if data[7]|int == 1 %}
+                <p style="color:green;"><b>予約確定</b></p>
+            {% else %}
+                <p style="color:orange;"><b>予約確認中</b></p>
+            {% endif %}
 
-    <h2>現在の予約</h2>
+            <h2>現在の予約</h2>
 
-    <div class="info">
-        <p><b>日付：</b>{{ data[1] }}</p>
-        <p><b>時間：</b>{{ data[2] }}</p>
-        <p><b>名前：</b>{{ data[3] }}</p>
-        <p><b>電話：</b>{{ data[4] }}</p>
-        <p><b>住所：</b>{{ data[5] }}</p>
-        <p><b>メール：</b>{{ data[6] or "" }}</p>
-    </div>
+            <div class="info">
+                <p><b>日付：</b>{{ data[1] }}</p>
+                <p><b>時間：</b>{{ data[2] }}</p>
+                <p><b>名前：</b>{{ data[3] }}</p>
+                <p><b>電話：</b>{{ data[4] }}</p>
+                <p><b>住所：</b>{{ data[5] }}</p>
+                <p><b>メール：</b>{{ data[6] or "" }}</p>
+            </div>
 
-    <!-- ボタン -->
-    <div style="margin-top:20px;">
-        <a href="/edit" class="btn btn-blue">変更する</a>
-        <a href="/delete" class="btn btn-red">削除する</a>
-    </div>
+            <div style="margin-top:20px;">
+                <a href="/edit" class="btn btn-blue">変更する</a>
+                <a href="/delete" class="btn btn-red">削除する</a>
+            </div>
 
-{% else %}
+        {% else %}
 
-    <h2>予約がありません</h2>
-    <p>現在の予約は登録されていません。</p>
+            <h2>予約がありません</h2>
+            <p>現在の予約は登録されていません。</p>
 
-{% endif %}
-
-<a class="back" href="/">← 戻る</a>
-
-</div>
+        {% endif %}
+        
+        <a class="back" href="/">← 戻る</a>
+        
+        </div>
 
 </body>
 </html>
