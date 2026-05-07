@@ -119,7 +119,7 @@ button {
     font-weight:bold;
     text-align:center;
 ">
-    予約可能期間：<br>{{ start_date }} ～ {{ end_date }}
+    予約可能期間：<br>{{ start_data }} ～ {{ end_data }}
 </div>
 
 <div id="calendar"></div>
@@ -128,7 +128,7 @@ button {
 <select id="time_select"></select>
 
 <form method="POST" action="/edit_confirm">
-<input type="hidden" name="date" id="date" value="{{ data[1] }}">
+<input type="hidden" name="data" id="data" value="{{ data[1] }}">
 <input type="hidden" name="time" id="time" value="{{ data[2] }}">
 
 <div>氏名</div>
@@ -155,7 +155,12 @@ let startDate = "{{ start_date }}";
 let endDate = "{{ end_date }}";
 
 function addOneDay(dateStr){
+    if(!dateStr) return null;
+
     let d = new Date(dateStr);
+
+    if(isNaN(d)) return null;
+
     d.setDate(d.getDate() + 1);
 
     let y = d.getFullYear();
@@ -183,25 +188,35 @@ function formatRange(t){
 let holidays = [];
 
 async function loadHolidays(){
-    const res = await fetch("https://holidays-jp.github.io/api/v1/date.json");
-    holidays = Object.keys(await res.json());
+    try{
+        const res = await fetch("https://holidays-jp.github.io/api/v1/date.json");
+
+        if(!res.ok) throw new Error("API error");
+
+        const json = await res.json();
+        holidays = Object.keys(json);
+
+    }catch(e){
+        console.log("祝日取得失敗", e);
+        holidays = []; // fallback
+    }
 }
 
-function isHoliday(dateStr){
+function isHoliday(dataStr){
 
-    if(!dateStr || typeof dateStr !== "string") return false;
+    if(!dataStr || typeof dataStr !== "string") return false;
 
-    if(holidays.includes(dateStr)) return true;
+    if(holidays.includes(dataStr)) return true;
 
-    if(!dateStr.includes("-")) return false;
+    if(!dataStr.includes("-")) return false;
 
-    let [y,m,d] = dateStr.split("-").map(Number);
+    let [y,m,d] = dataStr.split("-").map(Number);
 
     if(!y || !m || !d) return false;
 
-    let date = new Date(y, m - 1, d);
+    let data = new Date(y, m - 1, d);
 
-    let day = date.getDay();
+    let day = data.getDay();
 
     return day === 0 || day === 6;
 }
@@ -212,8 +227,8 @@ function isOutOfRange(str){
     return false;
 }
 
-function loadTimes(date){
-    fetch('/get_times?date=' + date)
+function loadTimes(data){
+    fetch('/get_times?data=' + data)
     .then(res => res.json())
     .then(data => {
 
@@ -323,7 +338,7 @@ document.addEventListener("DOMContentLoaded", async function(){
             }
 
             selectedDate = selected;
-            document.getElementById("date").value = selected;
+            document.getElementById("data").value = selected;
 
             loadTimes(selected);
             calendar.render();
@@ -337,7 +352,7 @@ document.addEventListener("DOMContentLoaded", async function(){
 <script>
 document.querySelector('form[action="/edit_confirm"]').addEventListener("submit", function(e){
 
-    let newDate = document.getElementById("date").value;
+    let newDate = document.getElementById("data").value;
     let newTime = document.getElementById("time").value;
 
     if(newDate === initDate && newTime === initTime){

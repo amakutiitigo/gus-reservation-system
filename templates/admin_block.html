@@ -151,7 +151,7 @@ a {
 
 <form method="POST" action="/add_block">
 
-    <input type="date" name="date" required>
+    <input type="date" name="data" required>
     <input type="time" name="start_time" required>
     <input type="time" name="end_time" required>
 
@@ -173,11 +173,11 @@ a {
 
 {% for b in blocks %}
 <tr>
-    <td>{{ b[1] }}</td>
-    <td>{{ b[2] }}</td>
-    <td>{{ b[3] }}</td>
+    <td>{{ b.data }}</td>
+    <td>{{ b.start_time }}</td>
+    <td>{{ b.end_time }}</td>
     <td>
-        <a href="/delete_block/{{ b[0] }}">解除</a>
+        <a href="/delete_block/{{ b.id }}">解除</a>
     </td>
 </tr>
 {% endfor %}

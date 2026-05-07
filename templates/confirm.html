@@ -73,7 +73,7 @@ button {
             <h2>この内容で予約しますか？</h2>
                 
             <div class="card">
-                <p>日付：<span class="big">{{ data.date }}</span></p>
+                <p>日付：<span class="big">{{ data.data }}</span></p>
                 <p>時間：<span class="big" id="time_view"></span></p>
                 <p>氏名：{{ data.name }}</p>
                 <p>電話：{{ data.phone }}</p>
@@ -82,7 +82,7 @@ button {
             </div>
             
             <!-- hidden -->
-            <input type="hidden" name="date" value="{{ data.date }}">
+            <input type="hidden" name="data" value="{{ data.data }}">
             <input type="hidden" name="time" value="{{ data.time }}">
             <input type="hidden" name="name" value="{{ data.name }}">
             <input type="hidden" name="phone" value="{{ data.phone }}">
@@ -96,7 +96,7 @@ button {
     </form>
     
         <form method="POST" action="/new">
-        <input type="hidden" name="date" value="{{ data.date }}">
+        <input type="hidden" name="data" value="{{ data.data }}">
         <input type="hidden" name="time" value="{{ data.time }}">
         <input type="hidden" name="name" value="{{ data.name }}">
         <input type="hidden" name="phone" value="{{ data.phone }}">

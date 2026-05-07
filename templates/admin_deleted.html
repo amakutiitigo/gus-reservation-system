@@ -18,13 +18,11 @@ body {
     padding: 20px;
 }
 
-/* タイトル */
 h2 {
     font-size: 26px;
     margin-bottom: 15px;
 }
 
-/* 上部ボタン */
 .topbar {
     display: flex;
     gap: 10px;
@@ -32,21 +30,16 @@ h2 {
     margin-bottom: 15px;
 }
 
-.topbar a button {
+.topbar a {
     padding: 10px 14px;
-    border: none;
     border-radius: 8px;
     background: #2c3e50;
     color: white;
-    cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
 }
 
-.topbar a button:hover {
-    opacity: 0.85;
-}
-
-/* 検索エリア */
-form {
+form.search {
     background: white;
     padding: 15px;
     border-radius: 10px;
@@ -63,7 +56,6 @@ input {
     border: 1px solid #ccc;
 }
 
-/* ボタン */
 button {
     padding: 10px 14px;
     border: none;
@@ -73,17 +65,11 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    opacity: 0.9;
-}
-
-/* テーブル */
 table {
     width: 100%;
     border-collapse: collapse;
     background: white;
     margin-top: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 }
 
 th, td {
@@ -97,33 +83,16 @@ th {
     color: white;
 }
 
-tr:hover {
-    background: #f1f1f1;
-}
-
-/* 削除済みの色感 */
-tbody tr {
-    background: #fff;
-}
-
-/* 復活ボタン */
 .restore-btn {
     background: #3498db;
     color: white;
     padding: 6px 10px;
     border-radius: 6px;
-    font-size: 12px;
 }
 
-/* 完全削除ボタン */
 .delete-btn {
     background: #e74c3c;
     margin-top: 10px;
-}
-
-/* チェックボックス */
-td input[type="checkbox"] {
-    transform: scale(1.2);
 }
 
 </style>
@@ -135,22 +104,21 @@ td input[type="checkbox"] {
 
 <h2>🗑 削除済み一覧</h2>
 
-<!-- 上部ボタン -->
 <div class="topbar">
-    <a href="/export_deleted_excel"><button>📥 Excel出力</button></a>
-    <a href="/admin"><button>📋 予約一覧へ</button></a>
-    <a href="/admin_menu"><button>🏠 メインメニューへ戻る</button></a>
-    <a href="/logout"><button>ログアウト</button></a>
+    <a href="/export_deleted_excel">📥 Excel出力</a>
+    <a href="/admin">📋 予約一覧へ</a>
+    <a href="/admin_menu">🏠 メインメニューへ戻る</a>
+    <a href="/logout">ログアウト</a>
 </div>
 
 <!-- 検索 -->
-<form method="GET" action="/admin_deleted">
+<form method="GET" action="/admin_deleted" class="search">
 
     <div>
-        <div style="font-size:12px;">予約日</div>
-        <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}">
+        <div style="font-size:12px;">予約日時</div>
+        <input type="date" name="data_from" value="{{ request.args.get('data_from','') }}">
         〜
-        <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}">
+        <input type="date" name="data_to" value="{{ request.args.get('data_to','') }}">
     </div>
 
     <div>
@@ -159,7 +127,7 @@ td input[type="checkbox"] {
     </div>
 
     <div>
-        <div style="font-size:12px;">コード</div>
+        <div style="font-size:12px;">お客様コード</div>
         <input type="text" name="code" value="{{ request.args.get('code','') }}">
     </div>
 
@@ -167,6 +135,7 @@ td input[type="checkbox"] {
     <button type="button" onclick="location.href='/admin_deleted'">リセット</button>
 
 </form>
+
 
 <!-- 一括削除 -->
 <form method="POST" action="/admin_bulk_delete">
@@ -183,7 +152,7 @@ td input[type="checkbox"] {
     <th>予約日</th>
     <th>予約時間</th>
     <th>申込日時</th>
-    <th>コード</th>
+    <th>お客様コード</th>
     <th>氏名</th>
     <th>住所</th>
     <th>電話</th>
@@ -197,24 +166,33 @@ td input[type="checkbox"] {
 {% for r in reservations %}
 <tr>
 
-    <td><input type="checkbox" name="ids" value="{{ r[0] }}"></td>
+    <td>
+        <input type="checkbox" name="ids" value="{{ r.id }}">
+    </td>
 
-    <td>{{ r[1] }}</td>
-    <td>{{ r[2] }}</td>
-    <td>{{ r[8] }}</td>
-    <td>{{ r[3] }}</td>
-    <td>{{ r[4] }}</td>
-    <td>{{ r[6] }}</td>
-    <td>{{ r[5] }}</td>
-    <td>{{ r[7] }}</td>
+    <td>{{ r.data }}</td>
+    <td>{{ r.time }}</td>
 
     <td>
-        <button type="submit"
-                formaction="/admin_restore"
-                formmethod="POST"
-                name="id"
-                value="{{ r[0] }}"
-                class="restore-btn">
+        {% if r.created_at %}
+            {{ r.created_at[:19].replace("T", " ") }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+
+    <td>{{ r.consumer_code }}</td>
+    <td>{{ r.name }}</td>
+    <td>{{ r.address }}</td>
+    <td>{{ r.phone }}</td>
+
+    <td>{{ r.status }}</td>
+
+    <td>
+        <button
+            type="button"
+            class="restore-btn"
+            onclick="restoreReservation('{{ r.id }}')">
             復活
         </button>
     </td>
@@ -237,11 +215,31 @@ td input[type="checkbox"] {
 </div>
 
 <script>
+
 document.getElementById("all").addEventListener("change", function () {
+    
     let boxes = document.querySelectorAll("input[name='ids']");
+    
     boxes.forEach(b => b.checked = this.checked);
+    
 });
-</script>
+    
+function restoreReservation(id) {
+    
+    fetch("/admin_restore", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "id=" + id
+    })
+    .then(() => {
+            location.reload();
+        });
+    
+    }
+    
+    </script>
 
 </body>
 </html>

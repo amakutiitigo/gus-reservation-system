@@ -1,26 +1,41 @@
+# =========================
+# 環境変数ロード
+# =========================
 from dotenv import load_dotenv
 load_dotenv()
 
+# =========================
+# 標準ライブラリ
+# =========================
 import os
-from supabase import create_client
+import io
+import smtplib
+from datetime import datetime, timedelta
 
+# =========================
+# サードパーティ
+# =========================
+from flask import Flask, render_template, request, redirect, session, jsonify, send_file
+from supabase import create_client
+from openpyxl import Workbook
+from email.mime.text import MIMEText
+from email.header import Header
+from email.utils import formataddr
+
+# =========================
+# Flask設定
+# =========================
+app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY")
+app.permanent_session_lifetime = timedelta(days=7)
+
+# =========================
+# Supabase接続
+# =========================
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_KEY")
 )
-
-from flask import Flask, render_template, request, redirect, session, jsonify, send_file
-from datetime import datetime, timedelta
-import sqlite3
-import io
-import os
-from openpyxl import Workbook
-
-# ---------------- 確定メール送信 ----------------
-import smtplib
-from email.mime.text import MIMEText
-from email.header import Header
-from email.utils import formataddr
 
 def format_time_range(time_str):
     t = time_str[:5]  # "09:30" に統一
@@ -31,35 +46,42 @@ def format_time_range(time_str):
     return f"{start.strftime('%H:%M')}～{end.strftime('%H:%M')}"
 
 def send_admin_mail(subject, body):
-    import os
-    import smtplib
-    from email.mime.text import MIMEText
-
-
 
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
     SMTP_USER = os.getenv("SMTP_USER")
     SMTP_PASS = os.getenv("SMTP_PASS")
 
-    msg = MIMEText(body)
+    if not SMTP_USER or not SMTP_PASS or not ADMIN_EMAIL:
+        print("SMTP環境変数が不足しています")
+        return
+
+    msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = SMTP_USER
     msg["To"] = ADMIN_EMAIL
 
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(SMTP_USER, SMTP_PASS)
-    server.send_message(msg)
-    server.quit()
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
 
-def mail_new(date, time, name, phone):
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+
+        print("メール送信成功")
+
+    except Exception as e:
+        print("メール送信失敗:", e)
+
+def mail_new(data, time, name, phone):
     send_admin_mail(
         "【新規予約】",
         f"""
 新規予約が入りました
 
 --------------------
-予約日付：{date}
+予約日付：{data}
 予約時間：{format_time_range(time)}
 氏名：{name}
 電話：{phone}
@@ -68,14 +90,14 @@ def mail_new(date, time, name, phone):
     )
 
 
-def mail_edit(date, time, name, phone):
+def mail_edit(data, time, name, phone):
     send_admin_mail(
         "【予約変更】",
         f"""
 予約が変更されました
 
 --------------------
-予約日付：{date}
+予約日付：{data}
 予約時間：{format_time_range(time)}
 氏名：{name}
 電話：{phone}
@@ -84,14 +106,14 @@ def mail_edit(date, time, name, phone):
     )
 
 
-def mail_delete(date, time, name, phone):
+def mail_delete(data, time, name, phone):
     send_admin_mail(
         "【予約削除】",
         f"""
 予約が削除されました
 
 --------------------
-予約日付：{date}
+予約日付：{data}
 予約時間：{format_time_range(time)}
 氏名：{name}
 電話：{phone}
@@ -103,7 +125,7 @@ def send_mail(row):
     SMTP_USER = os.getenv("SMTP_USER")
     SMTP_PASS = os.getenv("SMTP_PASS")
 
-    name, date, time, email = row
+    name, data, time, email = row
 
     print("RAW TIME =", time)
 
@@ -128,9 +150,9 @@ def send_mail(row):
 ガス点検の予約が確定しました。
 
 ■日時
-{date} {time_range}
+{data} {time_range}
 
-上記の日時にお伺いいたします。なお、都合により時間が前後する場合もございますが、ご容赦ください。
+上記の日時にお伺いしますので、ご在宅をお願いいたします。なお、都合により時間が前後する場合もございますが、ご容赦ください。
 また、このメール受信以降に予約の変更を希望される際は、お手数ですがお電話にてご相談ください。
 """
 
@@ -154,61 +176,11 @@ def send_mail(row):
     smtp.quit()
 # ---------------- 確定メール送信ここまで ----------------
 
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 JST = timezone(timedelta(hours=9))
 
-app = Flask(__name__)
-
-app.secret_key = "supersecretkey"
+app.secret_key = os.getenv("SECRET_KEY")
 app.permanent_session_lifetime = timedelta(days=7)
-
-# ---------------- DB ----------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(BASE_DIR, "reservation.db")
-
-print("DB PATH =", DB_FILE)
-
-# ---------------- DB初期化 ----------------
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY,
-        start_date TEXT,
-        end_date TEXT
-    )
-    """)
-
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS reservations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT,
-        time TEXT,
-        consumer_code TEXT,
-        name TEXT,
-        phone TEXT,
-        address TEXT,
-        action TEXT,
-        is_deleted INTEGER DEFAULT 0,
-        created_at TEXT
-        )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS blocked_times (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT,
-        start_time TEXT,
-        end_time TEXT
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-init_db()
 
 # ---------------- トップ ----------------
 @app.route('/', methods=['GET', 'POST'])
@@ -234,7 +206,6 @@ def index():
     return render_template('index.html')
 
 # ---------------- ログイン ----------------
-import os
 
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
@@ -245,7 +216,9 @@ def login():
         pw = request.form.get('password')
         print("PASSWORD INPUT =", repr(pw))  # ←ここ
 
-        if pw == "k-20100401":
+        ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+        if pw == ADMIN_PASSWORD:
             session['login'] = True
             return redirect('/admin_menu')
 
@@ -264,22 +237,38 @@ def admin_menu():
     if not session.get('login'):
         return redirect('/login')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # -----------------------------
+    # ① 予約ブロック一覧（今のまま維持）
+    # -----------------------------
+    res = supabase.table("blocked_times") \
+        .select("id,data,start_time,end_time") \
+        .order("data", desc=False) \
+        .execute()
 
-    c.execute("SELECT start_date, end_date FROM settings WHERE id=1")
-    row = c.fetchone()
-    conn.close()
+    blocks = res.data or []
 
-    if row:
-        start_date, end_date = row
-    else:
-        start_date, end_date = None, None
+    # -----------------------------
+    # ② 予約可能期間（settingsから取得）
+    # -----------------------------
+    setting_res = supabase.table("settings") \
+        .select("start_data,end_data") \
+        .eq("id", 1) \
+        .limit(1) \
+        .execute()
 
+    setting = setting_res.data[0] if setting_res.data else None
+
+    start_data = setting.get("start_data") if setting else None
+    end_data = setting.get("end_data") if setting else None
+
+    # -----------------------------
+    # ③ 画面へ
+    # -----------------------------
     return render_template(
         'admin_menu.html',
-        start_date=start_date,
-        end_date=end_date
+        blocks=blocks,
+        start_data=start_data,
+        end_data=end_data
     )
 
 # ---------------- 予約可能期間設定 ----------------
@@ -288,48 +277,48 @@ def admin_setting():
     if not session.get('login'):
         return redirect('/login')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    res = supabase.table("settings") \
+        .select("*") \
+        .eq("id", 1) \
+        .execute()
 
-    c.execute("SELECT start_date, end_date FROM settings WHERE id=1")
-    row = c.fetchone()
-    conn.close()
+    setting = res.data[0] if res.data else None
 
-    start = row[0] if row else ""
-    end = row[1] if row else ""
+    start = setting.get("start_data", "") if setting else ""
+    end = setting.get("end_data", "") if setting else ""
 
-    return render_template("admin_setting.html", start=start, end=end)
+    return render_template(
+        "admin_setting.html",
+        start=start,
+        end=end
+    )
 
 
 @app.route('/save_setting', methods=['POST'])
 def save_setting():
 
+    start_data = request.form.get('start_data')
+    end_data = request.form.get('end_data')
+
+    if not start_data or not end_data:
+        return redirect('/admin_setting')
+
+    # ---------------- ログインチェック
     if not session.get('login'):
         return redirect('/login')
 
-    start_date = request.form.get('start_date')
-    end_date = request.form.get('end_date')
+    # ---------------- フォーム取得
+    start_data = request.form.get('start_data')
+    end_data = request.form.get('end_data')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # ---------------- Supabase保存（UPSERT）
+    supabase.table("settings").upsert({
+        "id": 1,
+        "start_data": start_data,
+        "end_data": end_data
+    }).execute()
 
-    # 既存あれば更新、なければ作成
-    c.execute("SELECT id FROM settings WHERE id=1")
-    if c.fetchone():
-        c.execute("""
-            UPDATE settings
-            SET start_date=?, end_date=?
-            WHERE id=1
-        """, (start_date, end_date))
-    else:
-        c.execute("""
-            INSERT INTO settings (id, start_date, end_date)
-            VALUES (1, ?, ?)
-        """, (start_date, end_date))
-
-    conn.commit()
-    conn.close()
-
+    # ---------------- 完了
     return redirect('/admin_menu')
 
 @app.route('/clear_setting', methods=['POST'])
@@ -338,17 +327,11 @@ def clear_setting():
     if not session.get('login'):
         return redirect('/login')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        UPDATE settings
-        SET start_date=NULL, end_date=NULL
-        WHERE id=1
-    """)
-
-    conn.commit()
-    conn.close()
+    supabase.table("settings").upsert({
+        "id": 1,
+        "start_data": None,
+        "end_data": None
+    }).execute()
 
     return redirect('/admin_menu')
 
@@ -362,88 +345,83 @@ def admin():
     name = request.args.get('name', '')
     confirmed = request.args.get('confirmed', '')
 
-    date_from = request.args.get('date_from', '')
-    date_to = request.args.get('date_to', '')
+    data_from = request.args.get('data_from', '')
+    data_to = request.args.get('data_to', '')
 
     created_from = request.args.get('created_from', '')
     created_to = request.args.get('created_to', '')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    query = supabase.table("reservations").select("*").eq("is_deleted", False)
 
-    query = """
-        SELECT id,date,time,consumer_code,name,phone,address,email,action,created_at,is_confirmed
-        FROM reservations
-        WHERE is_deleted = 0
-    """
-
-    params = []
-
+    # フィルター（Supabase版）
     if confirmed != "":
-        query += " AND is_confirmed = ?"
-        params.append(confirmed)
+        query = query.eq("is_confirmed", confirmed == "1")
 
     if code:
-        query += " AND consumer_code LIKE ?"
-        params.append(f"%{code}%")
+        query = query.ilike("consumer_code", f"%{code}%")
 
     if name:
-        query += " AND name LIKE ?"
-        params.append(f"%{name}%")
+        query = query.ilike("name", f"%{name}%")
 
-    if date_from:
-        query += " AND date >= ?"
-        params.append(date_from)
+    if data_from:
+        query = query.gte("data", data_from)
 
-    if date_to:
-        query += " AND date <= ?"
-        params.append(date_to)
+    if data_to:
+        query = query.lte("data", data_to)
 
     if created_from:
-        query += " AND date(created_at) >= ?"
-        params.append(created_from)
+        query = query.gte("created_at", created_from)
 
     if created_to:
-        query += " AND date(created_at) <= ?"
-        params.append(created_to)
+        query = query.lte("created_at", created_to)
 
-    # ★ここが重要（並び順）
-    query += """
-        ORDER BY
-            REPLACE(consumer_code,'-','') ASC,
-            datetime(created_at) DESC
-    """
+    res = query = query.order("consumer_code", desc=False).order("created_at", desc=True).execute()
 
-    c.execute(query, params)
-    rows = c.fetchall()
-    conn.close()
+    reservations = res.data or []
 
-    return render_template("admin.html", reservations=rows)
+    for r in reservations:
+        r["status"] = r.get("status") or "新規"
+
+    return render_template("admin.html", reservations=reservations)
 
 @app.route('/toggle_confirm', methods=['POST'])
 def toggle_confirm():
-    id = request.form['id']
-    confirmed = 1 if request.form.get('confirmed') == 'on' else 0
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    reservation_id = request.form.get('id')
+    confirmed = request.form.get('confirmed') == 'on'
 
-    # 更新
-    c.execute("UPDATE reservations SET is_confirmed=? WHERE id=?", (confirmed, id))
+    if not reservation_id or not reservation_id.isdigit():
+        return redirect('/admin')
 
-    # ★メール用にデータ取得
-    c.execute("""
-        SELECT name, date, time, email
-        FROM reservations
-        WHERE id=?
-    """, (id,))
-    row = c.fetchone()
+    reservation_id = int(reservation_id)
 
-    conn.commit()
-    conn.close()
+    # ---------------- 更新
+    supabase.table("reservations") \
+        .update({"is_confirmed": confirmed}) \
+        .eq("id", reservation_id) \
+        .execute()
 
-    # ★ここ重要：確定＋メールありのときだけ送信
-    if confirmed == 1 and row and row[3]:
+    # ---------------- 1件取得（安全版）
+    res = supabase.table("reservations") \
+        .select("name, data, time, email") \
+        .eq("id", reservation_id) \
+        .limit(1) \
+        .execute()
+
+    if not res.data:
+        return redirect('/admin')
+
+    r = res.data[0]
+
+    row = (
+        r.get("name"),
+        r.get("data"),
+        r.get("time"),
+        r.get("email")
+    )
+
+    # ---------------- メール送信
+    if confirmed and row and row[3]:
         send_mail(row)
 
     return redirect('/admin')
@@ -451,21 +429,37 @@ def toggle_confirm():
 @app.route('/admin_delete', methods=['POST'])
 def admin_delete():
 
+    if not session.get('login'):
+        return redirect('/login')
+
     reservation_id = request.form.get('id')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    if not reservation_id:
+        return redirect('/admin')
 
-    # ★今の状態を保存してから削除
-    c.execute("""
-        UPDATE reservations
-        SET is_deleted = 1,
-            before_action = action
-        WHERE id = ?
-    """, (reservation_id,))
+    # -----------------------
+    # 元データ取得
+    # -----------------------
+    r = supabase.table("reservations") \
+        .select("*") \
+        .eq("id", int(reservation_id)) \
+        .limit(1) \
+        .execute()
 
-    conn.commit()
-    conn.close()
+    if not r.data:
+        return redirect('/admin')
+
+    row = r.data[0]
+
+    # -----------------------
+    # ★ここが「移動」の本体
+    # -----------------------
+    supabase.table("reservations") \
+        .update({
+            "is_deleted": True
+        }) \
+        .eq("id", int(reservation_id)) \
+        .execute()
 
     return redirect('/admin')
 
@@ -474,111 +468,144 @@ def admin_edit(id):
     if not session.get('login'):
         return redirect('/login')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # ----------------------------
+    # Supabaseから取得（SQLite廃止）
+    # ----------------------------
+    res = supabase.table("reservations") \
+        .select("id,data,time,name,phone,address,email") \
+        .eq("id", id) \
+        .execute()
 
-    c.execute("""
-        SELECT id,date,time,name,phone,address,email
-        FROM reservations
-        WHERE id=?
-    """, (id,))
+    data = None
 
-    data = c.fetchone()
-    conn.close()
+    if res.data:
+        r = res.data[0]
+
+        # Flaskテンプレ互換（タプル形式にする）
+        data = (
+            r.get("id"),
+            r.get("data"),
+            r.get("time"),
+            r.get("name"),
+            r.get("phone"),
+            r.get("address"),
+            r.get("email")
+        )
 
     return render_template("admin_edit.html", data=data)
 
-@app.route('/admin_edit_save', methods=['POST'])
-def admin_edit_save():
-
-    if not session.get('login'):
-        return redirect('/login')
+# ---------------- edit_save ---------------
+@app.route('/edit_save', methods=['POST'])
+def edit_save():
 
     data = request.form
+    code = session.get('code')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    if not code:
+        return redirect('/')
 
-    c.execute("""
-        UPDATE reservations
-        SET date=?, time=?, name=?, phone=?, address=?, email=?
-        WHERE id=?
-    """, (
-        data['date'],
-        data['time'],
+    # ---------------- 重複チェック（他人のみ）
+    check = supabase.table("reservations") \
+        .select("id") \
+        .eq("data", data['data']) \
+        .eq("time", data['time'][:5]) \
+        .eq("is_deleted", False) \
+        .neq("consumer_code", code) \
+        .execute()
+
+    if check.data:
+        return "この時間は予約できません"
+
+    # ---------------- 新しい履歴を追加
+    supabase.table("reservations").insert({
+        "data": data['data'],
+        "time": data['time'][:5],
+        "consumer_code": code,
+        "name": data['name'],
+        "phone": data['phone'],
+        "address": data['address'],
+        "email": data['email'],
+        "status": "変更",
+        "is_deleted": False,
+        "is_confirmed": False,
+        "created_at": datetime.now(JST).isoformat()
+    }).execute()
+
+    # ---------------- メール
+    mail_edit(
+        data['data'],
+        data['time'][:5],
         data['name'],
-        data['phone'],
-        data['address'],
-        data['email'],
-        data['id']
-    ))
+        data['phone']
+    )
 
-    conn.commit()
-    conn.close()
-
-    return redirect('/admin')
+    return render_template("edit_complete.html", data=data)
 
 @app.route('/admin_deleted')
 def admin_deleted():
     if not session.get('login'):
         return redirect('/login')
 
-    date_from = request.args.get('date_from', '')
-    date_to = request.args.get('date_to', '')
+    # フィルタ取得
+    data_from = request.args.get('data_from', '')
+    data_to = request.args.get('data_to', '')
     name = request.args.get('name', '')
     code = request.args.get('code', '')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # Supabaseクエリ
+    query = supabase.table("reservations") \
+        .select("*") \
+        .eq("is_deleted", True)
 
-    query = """
-        SELECT id,date,time,consumer_code,name,phone,address,action,created_at
-        FROM reservations
-        WHERE is_deleted = 1
-    """
+    if data_from:
+        query = query.gte("data", data_from)
 
-    params = []
-
-    if date_from:
-        query += " AND date >= ?"
-        params.append(date_from)
-
-    if date_to:
-        query += " AND date <= ?"
-        params.append(date_to)
+    if data_to:
+        query = query.lte("data", data_to)
 
     if name:
-        query += " AND name LIKE ?"
-        params.append(f"%{name}%")
+        query = query.ilike("name", f"%{name}%")
 
     if code:
-        query += " AND consumer_code LIKE ?"
-        params.append(f"%{code}%")
+        query = query.ilike("consumer_code", f"%{code}%")
 
-    query += " ORDER BY created_at DESC"
+    res = query.order("created_at", desc=True).execute()
 
-    c.execute(query, params)
-    rows = c.fetchall()
-    conn.close()
+    print("🔥 admin_deleted 生データ")
+    print(res.data)
 
-    # ★時間変換
+    rows = res.data or []
+
+    # 時間変換
     new_rows = []
     for r in rows:
-        t = r[2][:5]
-        h, m = map(int, t.split(":"))
+        try:
+            t = r["time"][:5]
+            h, m = map(int, t.split(":"))
 
-        end_h = h
-        end_m = m + 30
-        if end_m >= 60:
-            end_h += 1
-            end_m -= 60
+            end_h = h
+            end_m = m + 30
+            if end_m >= 60:
+                end_h += 1
+                end_m -= 60
 
-        time_range = f"{t}～{str(end_h).zfill(2)}:{str(end_m).zfill(2)}"
+            time_range = f"{t}～{str(end_h).zfill(2)}:{str(end_m).zfill(2)}"
+        except:
+            time_range = r.get("time", "")
 
-        new_rows.append((
-            r[0], r[1], time_range,
-            r[3], r[4], r[5], r[6], r[7], r[8]
-        ))
+        new_rows.append({
+            "id": r.get("id"),
+            "data": r.get("data"),
+            "time": time_range,
+            "created_at": r.get("created_at"),
+            "consumer_code": r.get("consumer_code"),
+            "name": r.get("name"),
+            "phone": r.get("phone"),
+            "address": r.get("address"),
+            "email": r.get("email"),
+            "status":r.get("status"),
+            "is_deleted": True
+        })
 
     return render_template("admin_deleted.html", reservations=new_rows)
 
@@ -590,19 +617,13 @@ def admin_restore():
 
     reservation_id = request.form.get('id')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    # ★保存してた状態を戻す
-    c.execute("""
-        UPDATE reservations
-        SET is_deleted = 0,
-            action = before_action
-        WHERE id = ?
-    """, (reservation_id,))
-
-    conn.commit()
-    conn.close()
+    # ★重要：actionは絶対触らない
+    supabase.table("reservations") \
+        .update({
+            "is_deleted": False
+        }) \
+        .eq("id", int(reservation_id)) \
+        .execute()
 
     return redirect('/admin_deleted')
 
@@ -613,24 +634,20 @@ def admin_restore_multi():
 
     ids = request.form.getlist('ids')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
     for i in ids:
-        c.execute("""
-            UPDATE reservations
-            SET is_deleted = 0
-            WHERE id = ?
-        """, (i,))
-
-    conn.commit()
-    conn.close()
+        supabase.table("reservations") \
+            .update({
+                "is_deleted": False
+            }) \
+            .eq("id", int(i)) \
+            .execute()
 
     return redirect('/admin_deleted')
 
 
 @app.route('/admin_bulk_delete', methods=['POST'])
 def admin_bulk_delete():
+
     if not session.get('login'):
         return redirect('/login')
 
@@ -639,17 +656,11 @@ def admin_bulk_delete():
     if not ids:
         return redirect('/admin_deleted')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
     for i in ids:
-        c.execute("""
-            DELETE FROM reservations
-            WHERE id = ?
-        """, (i,))
-
-    conn.commit()
-    conn.close()
+        supabase.table("reservations") \
+            .delete() \
+            .eq("id", int(i)) \
+            .execute()
 
     return redirect('/admin_deleted')
 
@@ -659,16 +670,12 @@ def admin_block():
     if not session.get('login'):
         return redirect('/login')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    res = supabase.table("blocked_times") \
+        .select("id,data,start_time,end_time") \
+        .order("data", desc=False) \
+        .execute()
 
-    c.execute("""
-        SELECT id, date, start_time, end_time
-        FROM blocked_times
-        ORDER BY date ASC, start_time
-    """)
-    rows = c.fetchall()
-    conn.close()
+    rows = res.data or []
 
     return render_template("admin_block.html", blocks=rows)
 
@@ -677,17 +684,12 @@ def export_block_excel():
     if not session.get('login'):
         return redirect('/login')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    res = supabase.table("blocked_times") \
+        .select("id,data,start_time,end_time") \
+        .order("data", desc=False) \
+        .execute()
 
-    c.execute("""
-        SELECT date, start_time, end_time
-        FROM blocked_times
-        ORDER BY date ASC, start_time ASC
-    """)
-
-    rows = c.fetchall()
-    conn.close()
+    rows = res.data or []
 
     wb = Workbook()
     ws = wb.active
@@ -711,40 +713,101 @@ def export_block_excel():
 @app.route('/add_block', methods=['POST'])
 def add_block():
 
+    # ---------------- ログインチェック
     if not session.get('login'):
         return redirect('/login')
 
-    date = request.form['date']
-    start_time = request.form['start_time']
-    end_time = request.form['end_time']
+    try:
+        # ---------------- フォーム取得
+        data = request.form.get('data')
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+        print("受信:", data, start_time, end_time)  # ★デバッグ
 
-    c.execute("""
-        INSERT INTO blocked_times (date, start_time, end_time)
-        VALUES (?, ?, ?)
-    """, (date, start_time, end_time))
+        # ---------------- 入力チェック
+        if not data or not start_time or not end_time:
+            print("入力不足")
+            return redirect('/admin_block')
 
-    conn.commit()
-    conn.close()
+        start_time = start_time[:5]
+        end_time = end_time[:5]
 
-    return redirect('/admin_block')
+        # ---------------- 時間チェック
+        start_dt = datetime.strptime(start_time, "%H:%M")
+        end_dt = datetime.strptime(end_time, "%H:%M")
+
+        if end_dt <= start_dt:
+            print("時間NG")
+            return redirect('/admin_block')
+
+        # ---------------- 重複チェック
+        existing = supabase.table("blocked_times") \
+            .select("id") \
+            .eq("data", data) \
+            .eq("start_time", start_time) \
+            .eq("end_time", end_time) \
+            .execute()
+
+        if existing.data:
+            print("完全一致ブロックあり")
+            return redirect('/admin_block')
+
+        # ---------------- 予約との重複チェック
+        reservations = supabase.table("reservations") \
+            .select("time") \
+            .eq("data", data) \
+            .eq("is_deleted", False) \
+            .execute()
+
+        reserved_times = set()
+        for r in (reservations.data or []):
+            if r.get("time"):
+                reserved_times.add(r["time"][:5])
+
+        current = start_dt
+        while current < end_dt:
+            t = current.strftime("%H:%M")
+
+            if t in reserved_times:
+                print("予約と衝突:", t)
+                return redirect('/admin_block')
+
+            current += timedelta(minutes=30)
+
+        # ---------------- ★ここ重要（結果確認）
+        result = supabase.table("blocked_times").insert({
+            "data": data,
+            "start_time": start_time,
+            "end_time": end_time
+        }).execute()
+
+        print("INSERT結果:", result)
+
+        # ★失敗チェック
+        if not result.data:
+            print("INSERT失敗")
+            return redirect('/admin_block')
+
+        print("追加成功")
+
+        return redirect('/admin_block')
+
+    except Exception as e:
+        print("エラー発生:", e)
+        return redirect('/admin_block')
 
 
 @app.route('/delete_block/<int:block_id>')
 def delete_block(block_id):
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    if not session.get('login'):
+        return redirect('/login')
 
-    c.execute("""
-        DELETE FROM blocked_times
-        WHERE id = ?
-    """, (block_id,))
-
-    conn.commit()
-    conn.close()
+    supabase.table("blocked_times") \
+        .delete() \
+        .eq("id", block_id) \
+        .execute()
 
     return redirect('/admin_block')
 
@@ -755,19 +818,20 @@ def new():
         return redirect('/')
 
     # ★予約可能期間取得
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    res = supabase.table("settings") \
+        .select("*") \
+        .eq("id", 1) \
+        .limit(1) \
+        .execute()
 
-    c.execute("SELECT start_date, end_date FROM settings WHERE id=1")
-    setting = c.fetchone()
-    conn.close()
+    setting = res.data[0] if res.data else None
 
-    start_date = setting[0] if setting else ""
-    end_date = setting[1] if setting else ""
+    start_data = setting.get("start_data") if setting else ""
+    end_data = setting.get("end_data") if setting else ""
 
     # ★デフォルト
     data = {
-        "date": "",
+        "data": "",
         "time": "",
         "name": "",
         "phone": "",
@@ -782,60 +846,70 @@ def new():
     return render_template(
         "new.html",
         data=data,
-        start_date=start_date,
-        end_date=end_date
+        start_data=start_data,
+        end_data=end_data
     )
 
 # ---------------- get_times ----------------
 @app.route('/get_times')
 def get_times():
 
-    date = request.args.get('date')
-    if not date:
+    data = request.args.get('data')
+    if not data:
         return jsonify([])
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # =========================
+    # ① settings取得（Supabase化）
+    # =========================
+    setting_res = supabase.table("settings") \
+        .select("start_data,end_data") \
+        .eq("id", 1) \
+        .limit(1) \
+        .execute()
 
-    # ★追加：予約可能期間チェック
-    c.execute("SELECT start_date, end_date FROM settings WHERE id=1")
-    setting = c.fetchone()
+    setting = setting_res.data[0] if setting_res.data else None
 
     if setting:
-        start_date, end_date = setting
+        start_data = setting.get("start_data")
+        end_data = setting.get("end_data")
 
-        if start_date and date < start_date:
+        if start_data and data < start_data:
             return jsonify([])
 
-        if end_date and date > end_date:
+        if end_data and data > end_data:
             return jsonify([])
 
-    # ①予約取得（削除済は完全に無視）
-    c.execute("""
-        SELECT time
-        FROM reservations
-        WHERE date=? AND is_deleted=0
-    """, (date,))
-    rows = c.fetchall()
+    # =========================
+    # ② 予約取得（Supabase）
+    # =========================
+    res = supabase.table("reservations") \
+        .select("time") \
+        .eq("data", data) \
+        .eq("is_deleted", False) \
+        .execute()
 
     reserved = set()
-    for (t,) in rows:
-        reserved.add(t[:5])
+    for r in (res.data or []):
+        if r.get("time"):
+            reserved.add(r["time"][:5])
 
-    # ②ブロック取得
-    c.execute("""
-        SELECT start_time, end_time
-        FROM blocked_times
-        WHERE date=?
-    """, (date,))
-    blocks = c.fetchall()
+    # =========================
+    # ③ ブロック取得（Supabase化）
+    # =========================
+    block_res = supabase.table("blocked_times") \
+        .select("start_time,end_time") \
+        .eq("data", data) \
+        .execute()
 
-    conn.close()
+    blocks = []
+    for r in (block_res.data or []):
+        blocks.append((r["start_time"], r["end_time"]))
 
-    # ★ここが本質（今から24時間）
+    # =========================
+    # ④ 時間生成
+    # =========================
     limit_time = datetime.now(JST) + timedelta(hours=24)
 
-    # ④時間生成
     slots = []
 
     start = datetime.strptime("09:30", "%H:%M")
@@ -844,11 +918,11 @@ def get_times():
     while start <= end:
 
         t = start.strftime("%H:%M")
+
         current_dt = datetime.strptime(
-            date + " " + t,
+            data + " " + t,
             "%Y-%m-%d %H:%M"
-        )
-        current_dt = current_dt.replace(tzinfo=JST)
+        ).replace(tzinfo=JST)
 
         # ①予約済みチェック
         if t in reserved:
@@ -859,11 +933,9 @@ def get_times():
         blocked = False
 
         for b_start, b_end in blocks:
-            bs = datetime.strptime(date + " " + b_start, "%Y-%m-%d %H:%M")
-            bs = bs.replace(tzinfo=JST)
 
-            be = datetime.strptime(date + " " + b_end, "%Y-%m-%d %H:%M")
-            be = be.replace(tzinfo=JST)
+            bs = datetime.strptime(data + " " + b_start, "%Y-%m-%d %H:%M").replace(tzinfo=JST)
+            be = datetime.strptime(data + " " + b_end, "%Y-%m-%d %H:%M").replace(tzinfo=JST)
 
             # 日跨ぎ対応
             if be <= bs:
@@ -877,14 +949,13 @@ def get_times():
             start += timedelta(minutes=30)
             continue
 
-        # ★③24時間ルール（ここだけ）
-        if current_dt < limit_time:
-            start += timedelta(minutes=30)
-            continue
+        # ③24時間ルール
+        #if current_dt < limit_time:
+        #    start += timedelta(minutes=30)
+        #    continue
 
         # OK
         slots.append(t)
-
         start += timedelta(minutes=30)
 
     return jsonify(slots)
@@ -894,7 +965,7 @@ def get_times():
 def confirm():
 
     data = {
-        "date": request.form.get("date"),
+        "data": request.form.get("data"),
         "time": request.form.get("time"),
         "name": request.form.get("name"),
         "phone": request.form.get("phone"),
@@ -908,7 +979,9 @@ def confirm():
 @app.route('/create_confirm', methods=['POST'])
 def create_confirm():
 
-    data = request.form
+    data = request.form  # ←先にこれ
+    print("FORM DATE =", dict(data))  # ←ここでOK
+
     code = session.get('code')
 
     if not code:
@@ -916,7 +989,7 @@ def create_confirm():
 
     # ---------------- 予約時間チェック ----------------
     target_dt = datetime.strptime(
-        data['date'] + " " + data['time'][:5],
+        data['data'] + " " + data['time'][:5],
         "%Y-%m-%d %H:%M"
     ).replace(tzinfo=JST)
 
@@ -925,27 +998,45 @@ def create_confirm():
     if target_dt < limit_time:
         return "24時間後以降の予約しかできません"
 
-    # ---------------- Supabase保存 ----------------
-    supabase.table("reservations").insert({
-        "date": data["date"],
-        "time": data["time"][:5],
-        "consumer_code": code,
-        "name": data["name"],
-        "phone": data["phone"],
-        "address": data["address"],
-        "email": data["email"],
-        "action": "新規",
-        "is_deleted": False,
-        "is_confirmed": False,
-        "created_at": datetime.now(JST).isoformat()
-    }).execute()
+# ---------------- 重複チェック ----------------
+    check = supabase.table("reservations") \
+        .select("id") \
+        .eq("data", data.get("data")) \
+        .eq("time", data.get("time")[:5]) \
+        .eq("is_deleted", False) \
+        .execute()
+
+    if check.data:
+        return "この時間は予約できません。"
+
+    # ---------------- Supabase保存（競合対策） ----------------
+    try:
+        supabase.table("reservations").insert({
+            "data": data.get("data", ""),
+            "time": data.get("time", "")[:5],
+            "consumer_code": code,
+            "name": data.get("name", ""),
+            "phone": data.get("phone", ""),
+            "address": data.get("address", ""),
+            "email": data.get("email", ""),
+            "status": "新規",
+            "is_deleted": False,
+            "is_confirmed": False,
+            "is_deleted": False,
+            "is_confirmed": False,
+            "created_at": datetime.now(JST).isoformat()
+        }).execute()
+
+    except Exception as e:
+        print("INSERT ERROR =", e)
+        return "この時間はすでに予約されています"
 
     # ---------------- メール送信 ----------------
     mail_new(
-        data['date'],
-        data['time'][:5],
-        data['name'],
-        data['phone']
+        data.get('data', ''),
+        data.get('time', '')[:5],
+        data.get('name', ''),
+        data.get('phone', '')
     )
 
     return render_template("complete.html", data=data)
@@ -954,23 +1045,23 @@ def create_confirm():
 @app.route('/check_day')
 def check_day():
 
-    date = request.args.get('date')
-    if not date:
+    data = request.args.get('data')
+    if not data:
         return jsonify({"ok": False})
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # -------------------------------
+    # blocked_times（Supabase取得）
+    # -------------------------------
+    res = supabase.table("blocked_times") \
+        .select("start_time,end_time") \
+        .eq("data", data) \
+        .execute()
 
-    c.execute("""
-        SELECT start_time, end_time
-        FROM blocked_times
-        WHERE date=?
-    """, (date,))
-    blocks = c.fetchall()
+    blocks = res.data or []
 
-    conn.close()
-
+    # -------------------------------
     # 予約枠（固定）
+    # -------------------------------
     slots = []
     start = datetime.strptime("09:30", "%H:%M")
     end = datetime.strptime("16:30", "%H:%M")
@@ -979,8 +1070,17 @@ def check_day():
         slots.append(start.strftime("%H:%M"))
         start += timedelta(minutes=30)
 
-    # ブロック削除
-    for b_start, b_end in blocks:
+    # -------------------------------
+    # ブロック削除ロジック
+    # -------------------------------
+    for b in blocks:
+
+        b_start = b.get("start_time")
+        b_end = b.get("end_time")
+
+        if not b_start or not b_end:
+            continue
+
         bs = datetime.strptime(b_start, "%H:%M")
         be = datetime.strptime(b_end, "%H:%M")
 
@@ -989,6 +1089,9 @@ def check_day():
             if not (bs <= datetime.strptime(t, "%H:%M") < be)
         ]
 
+    # -------------------------------
+    # 結果
+    # -------------------------------
     return jsonify({
         "ok": len(slots) > 0,
         "message": "この日は予約できません" if len(slots) == 0 else ""
@@ -1002,41 +1105,49 @@ def edit():
     if not code:
         return redirect('/')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    # ----------------------------
+    # Supabaseから予約取得
+    # ----------------------------
+    res = supabase.table("reservations") \
+        .select("*") \
+        .eq("consumer_code", code) \
+        .eq("is_deleted", False) \
+        .order("id", desc=True) \
+        .limit(1) \
+        .execute()
 
-    # ★予約データ取得
-    c.execute("""
-        SELECT id,date,time,name,phone,address,email
-        FROM reservations
-        WHERE consumer_code=?
-        ORDER BY id DESC
-        LIMIT 1
-    """, (code,))
-    data = c.fetchone()
-
-    # ★期間取得
-    c.execute("SELECT start_date, end_date FROM settings WHERE id=1")
-    setting = c.fetchone()
-
-    conn.close()
+    data = res.data[0] if res.data else None
 
     if not data:
         return "予約データがありません"
 
-    # ★ここ強化
-    if setting and setting[0] and setting[1]:
-        start_date = setting[0]
-        end_date = setting[1]
-    else:
-        start_date = ""
-        end_date = ""
+    # ----------------------------
+    # 期間取得
+    # ----------------------------
+    res = supabase.table("settings") \
+        .select("*") \
+        .eq("id", 1) \
+        .limit(1) \
+        .execute()
+
+    setting = res.data[0] if res.data else None
+
+    start_data = setting.get("start_data") if setting else ""
+    end_data = setting.get("end_data") if setting else ""
 
     return render_template(
         "edit.html",
-        data=data,
-        start_date=start_date,
-        end_date=end_date
+        data=(
+            data["id"],
+            data["data"],
+            data["time"],
+            data["name"],
+            data["phone"],
+            data["address"],
+            data.get("email", "")
+        ),
+        start_data=start_data,
+        end_data=end_data
     )
 
 @app.route('/edit_confirm', methods=['POST'])
@@ -1045,7 +1156,7 @@ def edit_confirm():
     print(request.form)
 
     data = {
-        "date": request.form.get("date"),
+        "data": request.form.get("data"),
         "time": request.form.get("time"),
         "name": request.form.get("name"),
         "phone": request.form.get("phone"),
@@ -1055,51 +1166,10 @@ def edit_confirm():
 
     return render_template("edit_confirm.html", data=data)
 
-# ---------------- edit_save ----------------
-@app.route('/edit_save', methods=['POST'])
-def edit_save():
-    data = request.form
-    code = session.get('code')
-
-    print(data)
-
-    if not code:
-        return redirect('/')
-
-    email = request.form.get('email', '')  # ←★これ追加
-
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        INSERT INTO reservations
-        (date,time,consumer_code,name,phone,address,email,action,created_at)
-        VALUES (?,?,?,?,?,?,?,?,?)
-    """, (
-        data['date'],
-        data['time'][:5],
-        code,
-        data['name'],
-        data['phone'],
-        data['address'],
-        email,
-        "変更",
-        datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-    ))
-
-    conn.commit()
-    conn.close()
-
-    mail_edit(
-    data['date'],
-    data['time'][:5],
-    data['name'],
-    data['phone']
-)
-
-    return render_template("edit_complete.html", data=data)   
-
 # ---------------- delete ----------------
+# -------------------------------
+# 削除確認画面（表示だけ）
+# -------------------------------
 @app.route('/delete')
 def delete():
     code = session.get('code')
@@ -1107,79 +1177,82 @@ def delete():
     if not code:
         return redirect('/')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    res = supabase.table("reservations") \
+        .select("*") \
+        .eq("consumer_code", code) \
+        .eq("is_deleted", False) \
+        .order("id", desc=True) \
+        .limit(1) \
+        .execute()
 
-    c.execute("""
-        SELECT id,date,time,name,phone,address,email,is_deleted
-        FROM reservations
-        WHERE consumer_code=? AND is_deleted=0
-        ORDER BY id DESC
-        LIMIT 1
-    """, (code,))
-
-    row = c.fetchone()
-    conn.close()
+    row = res.data[0] if res.data else None
 
     if not row:
         return render_template("delete.html", data=None)
 
-    # ★ここから置き換え
-    if not row or not row[2]:
-        return render_template("delete.html", data=None)
+    start = datetime.strptime(row["time"][:5], "%H:%M")
+    end = start + timedelta(minutes=30)
 
-    try:
-        start = datetime.strptime(row[2][:5], "%H:%M")
-        end = start + timedelta(minutes=30)
-        time_range = f"{start.strftime('%H:%M')}～{end.strftime('%H:%M')}"
-    except:
-        time_range = row[2] or ""
-# ★ここまで
-
-    data = (row[0], row[1], time_range, row[3], row[4], row[5], row[6])
+    data = (
+        row["id"],
+        row["data"],
+        f"{start:%H:%M}～{end:%H:%M}",
+        row["name"],
+        row["phone"],
+        row["address"],
+        row.get("email", "")
+    )
 
     return render_template("delete.html", data=data)
 
-@app.route('/delete', methods=['POST'])
-def delete_post():
+
+# -------------------------------
+# 削除実行（ここがPOST）
+# -------------------------------
+@app.route('/delete_confirm', methods=['POST'])
+def delete_confirm():
+
     code = session.get('code')
 
     if not code:
         return redirect('/')
 
-    date = request.form.get('date')
-    time = request.form.get('time')
-    name = request.form.get('name')
-    phone = request.form.get('phone')
-    address = request.form.get('address')
+    # 最新予約取得
+    res = supabase.table("reservations") \
+        .select("*") \
+        .eq("consumer_code", code) \
+        .eq("is_deleted", False) \
+        .order("created_at", desc=True) \
+        .limit(1) \
+        .execute()
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    if not res.data:
+        return redirect('/')
 
-    c.execute("""
-        INSERT INTO reservations
-        (date,time,consumer_code,name,phone,address,action,created_at)
-        VALUES (?,?,?,?,?,?,?,?)
-    """, (
-        date,
-        time,
-        code,
-        name,
-        phone,
-        address,
-        "削除",
-        datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-    ))
+    r = res.data[0]
 
-    conn.commit()
-    conn.close()
+    # 削除履歴を追加
+    supabase.table("reservations").insert({
+        "data": r["data"],
+        "time": r["time"],
+        "consumer_code": r["consumer_code"],
+        "name": r["name"],
+        "phone": r["phone"],
+        "address": r["address"],
+        "email": r.get("email"),
+        "status": "削除",
+        "is_deleted": False,
+        "is_confirmed": False,
+        "created_at": datetime.now(JST).isoformat()
+    }).execute()
 
+    # ★これ追加
     mail_delete(
-    date,
-    time[:5],
-    name,
-    phone
-)
+        r["data"],
+        r["time"][:5],
+        r["name"],
+        r["phone"]
+    )
 
     return render_template("delete_done.html")
 
@@ -1191,21 +1264,15 @@ def view():
     if not code:
         return redirect('/')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    res = supabase.table("reservations") \
+        .select("*") \
+        .eq("consumer_code", code) \
+        .eq("is_deleted", False) \
+        .order("id", desc=True) \
+        .limit(1) \
+        .execute()
 
-    # ① ここでrowを作る
-    c.execute("""
-        SELECT id,date,time,name,phone,address,email,is_confirmed
-        FROM reservations
-        WHERE consumer_code=? AND is_deleted=0
-        ORDER BY id DESC
-        LIMIT 1
-    """, (code,))
-
-    row = c.fetchone()
-    print(row)
-    conn.close()
+    row = res.data[0] if res.data else None
 
     # ② rowがない場合
     if not row:
@@ -1213,7 +1280,7 @@ def view():
 
     # ③ time整形
     try:
-        start = datetime.strptime(row[2][:5], "%H:%M")
+        start = datetime.strptime(row["time"][:5], "%H:%M")
         end = start + timedelta(minutes=30)
         time_range = f"{start.strftime('%H:%M')}～{end.strftime('%H:%M')}"
     except:
@@ -1221,14 +1288,14 @@ def view():
 
     # ④ ここでdata作る（←ここでrow使うのが正解）
     data = (
-        row[0],  # id
-        row[1],  # date
+        row["id"],
+        row["data"],
         time_range,
-        row[3],  # name
-        row[4],  # phone
-        row[5],  # address
-        row[6],  # email
-        row[7]   # is_confirmed
+        row["name"],
+        row["phone"],
+        row["address"],
+        row.get("email"),
+        row.get("is_confirmed")
     )
 
     return render_template("view.html", data=data)
@@ -1236,64 +1303,52 @@ def view():
 # ---------------- 予約excel出力 ----------------
 @app.route('/export_excel')
 def export_excel():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    if not session.get('login'):
+        return redirect('/login')
 
-    c.execute("""
-        SELECT date,time,created_at,consumer_code,name,address,phone,action
-        FROM reservations
-        WHERE is_deleted = 0
-        ORDER BY created_at DESC
-    """)
+    # Supabaseから取得
+    res = supabase.table("reservations") \
+        .select("*") \
+        .eq("is_deleted", False) \
+        .order("created_at", desc=True) \
+        .execute()
 
-    rows = c.fetchall()
-    conn.close()
+    rows = res.data or []
 
+    # Excel作成
     wb = Workbook()
     ws = wb.active
     ws.title = "予約一覧"
 
+    # ヘッダー
     ws.append([
-        "予約日",
-        "予約時間",
-        "申込日時",
-        "消費者コード",
-        "氏名",
-        "住所",
-        "電話番号",
-        "状態"
+        "予約日", "時間", "申込日時",
+        "コード", "氏名", "住所",
+        "電話", "メール", "状態"
     ])
 
-    def format_range(t):
-        if not t:
-            return ""
-
-        t = t[:5]
-
-        h, m = map(int, t.split(":"))
-        end_h = h
-        end_m = m + 30
-
-        if end_m >= 60:
-            end_h += 1
-            end_m -= 60
-
-        return f"{t}～{str(end_h).zfill(2)}:{str(end_m).zfill(2)}"
-
     for r in rows:
-        date, time, created_at, code, name, address, phone, action = r
+        # 時間整形
+        time = (r.get("time") or "")[:5]
+
+        # 日時整形
+        created = (r.get("created_at") or "")
+        if created:
+            created = created[:19].replace("T", " ")
 
         ws.append([
-            date,
-            format_range(time),   # ★ここが重要
-            created_at,
-            code,
-            name,
-            address,
-            phone,
-            action
+            r.get("data"),
+            time,
+            created,
+            r.get("consumer_code"),
+            r.get("name"),
+            r.get("address"),
+            r.get("phone"),
+            r.get("email"),
+            r.get("status") or "new"
         ])
 
+    # 出力
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
@@ -1308,18 +1363,16 @@ def export_excel():
 @app.route('/export_deleted_excel')
 def export_deleted_excel():
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    if not session.get('login'):
+        return redirect('/login')
 
-    c.execute("""
-        SELECT date,time,created_at,consumer_code,name,address,phone,action
-        FROM reservations
-        WHERE is_deleted = 1
-        ORDER BY created_at DESC
-    """)
+    res = supabase.table("reservations") \
+        .select("*") \
+        .eq("is_deleted", True) \
+        .order("created_at", desc=True) \
+        .execute()
 
-    rows = c.fetchall()
-    conn.close()
+    rows = res.data or []
 
     wb = Workbook()
     ws = wb.active
@@ -1336,34 +1389,22 @@ def export_deleted_excel():
         "状態"
     ])
 
-    def format_range(t):
-        if not t:
-            return ""
-
-        t = t[:5]
-        h, m = map(int, t.split(":"))
-
-        end_h = h
-        end_m = m + 30
-
-        if end_m >= 60:
-            end_h += 1
-            end_m -= 60
-
-        return f"{t}～{str(end_h).zfill(2)}:{str(end_m).zfill(2)}"
-
     for r in rows:
-        date, time, created_at, code, name, address, phone, action = r
+        time = (r.get("time") or "")[:5]
+
+        created = (r.get("created_at") or "")
+        if created:
+            created = created[:19].replace("T", " ")
 
         ws.append([
-            date,
-            format_range(time),
-            created_at,
-            code,
-            name,
-            address,
-            phone,
-            action
+            r.get("data"),
+            time,
+            created,
+            r.get("consumer_code"),
+            r.get("name"),
+            r.get("address"),
+            r.get("phone"),
+            r.get("status") or "new"
         ])
 
     output = io.BytesIO()
@@ -1378,5 +1419,4 @@ def export_deleted_excel():
 
 # ---------------- 起動 ----------------
 if __name__ == "__main__":
-    init_db()
     app.run(host="0.0.0.0", port=10000, debug=True)

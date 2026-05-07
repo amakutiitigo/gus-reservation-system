@@ -32,6 +32,11 @@ button {
     background: orange;
     color: white;
 }
+
+.btn-logout {
+    background: rgb(255, 68, 0);
+    color: white;
+}
 </style>
 </head>
 
@@ -41,8 +46,8 @@ button {
 
 <!-- ★ここが追加ポイント -->
 <div class="notice">
-{% if start_date %}
-    予約可能期間：{{ start_date }} ～ {{ end_date }}
+{% if start_data %}
+    予約可能期間：{{ start_data }} ～ {{ end_data }}
 {% else %}
     ⚠ 予約可能期間が未設定です
 {% endif %}
@@ -58,12 +63,18 @@ button {
     <button type="submit">予約一覧</button>
 </form>
 
+<form action="/admin_deleted">
+    <button type="submit">削除済み一覧</button>
+</form>
+
 <form action="/admin_block">
     <button type="submit">予約除外日設定</button>
 </form>
 
+<hr>
+
 <form action="/logout">
-    <button type="submit">ログアウト</button>
+    <button type="submit" class="btn-logout">ログアウト</button>
 </form>
 
 </body>

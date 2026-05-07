@@ -101,7 +101,12 @@
         font-size: 20px;    /* 必要なら微調整 */
     }
 
-    .bg-holiday { background: #eee !important; }
+    .fc-daygrid-day.bg-holiday {
+        background: #eee !important;
+        opacity: 0.6;
+        pointer-events: none;   /* ←追加：クリック不可 */
+        cursor: not-allowed;    /* ←追加：触れない見た目 */
+    }
     .bg-current { background: #90caf9 !important; }
     .bg-selected { background: #ffe082 !important; }
 
@@ -134,7 +139,7 @@
     font-weight:bold;
     text-align:center;
 ">
-    予約可能期間：<br>{{ start_date }} ～ {{ end_date }}
+    予約可能期間：<br>{{ start_data }} ～ {{ end_data }}
 </div>
 
 <div id="calendar"></div>
@@ -143,7 +148,7 @@
 <select id="time_select"></select>
 
 <form method="POST" action="/confirm">
-<input type="hidden" name="date" id="date" required>
+<input type="hidden" name="data" id="data" required>
 <input type="hidden" name="time" id="time" required>
 
 <div>氏名</div>
@@ -194,208 +199,242 @@
 
 <script>
 
-let startDate = "{{ start_date or '' }}";
-let endDate = "{{ end_date or '' }}";
+    let startDate = "{{ start_data or '' }}";
+    let endDate = "{{ end_data or '' }}";
+    
+    let initDate = "{{ data.data or '' }}";
+    let initTime = "{{ data.time or '' }}";
+    let selectedDate = "";
+    
+    let holidays = [];
+    
 
-let initDate = "{{ data.date or '' }}";
-let initTime = "{{ data.time or '' }}";
-let selectedDate = "";
+    function formatRange(timeStr){
 
-let holidays = [];
+        let [h, m] = timeStr.split(":").map(Number);
 
-/* =========================
-   日付処理
-========================= */
-function formatDate(d){
-    let y = d.getFullYear();
-    let m = String(d.getMonth()+1).padStart(2,'0');
-    let da = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${da}`;
-}
+        let start = new Date(2000, 0, 1, h, m);
+        let end = new Date(start.getTime() + 30 * 60000);
 
-function addOneDay(dateStr){
-    if(!dateStr) return undefined;
-    let d = new Date(dateStr);
-    d.setDate(d.getDate() + 1);
-    return formatDate(d);
-}
+        let sh = String(start.getHours()).padStart(2, '0');
+        let sm = String(start.getMinutes()).padStart(2, '0');
+        let eh = String(end.getHours()).padStart(2, '0');
+        let em = String(end.getMinutes()).padStart(2, '0');
 
-/* =========================
-   祝日
-========================= */
-async function loadHolidays(){
-    const res = await fetch("https://holidays-jp.github.io/api/v1/date.json");
-    holidays = Object.keys(await res.json());
-}
+        return `${sh}:${sm}～${eh}:${em}`;
+    }
 
-function isHoliday(dateStr){
+    /* =========================
+       日付フォーマット
+    ========================= */
+    function formatDate(d){
+        let y = d.getFullYear();
+        let m = String(d.getMonth()+1).padStart(2,'0');
+        let da = String(d.getDate()).padStart(2,'0');
+        return `${y}-${m}-${da}`;
+    }
+    
+    function addOneDay(dateStr){
+        if(!dateStr) return undefined;
+        let d = new Date(dateStr);
+        d.setDate(d.getDate() + 1);
+        return formatDate(d);
+    }
+    
+    /* =========================
+       祝日取得
+    ========================= */
+    async function loadHolidays(){
+        try {
+            const res = await fetch("https://holidays-jp.github.io/api/v1/date.json");
+            const json = await res.json();
 
-    if(!dateStr || typeof dateStr !== "string") return false;
+            holidays = Object.keys(json);
 
-    if(holidays.includes(dateStr)) return true;
+            console.log("祝日取得OK", holidays);
 
-    let [y,m,d] = dateStr.split("-").map(Number);
-    let date = new Date(y, m-1, d);
+        } catch(e){
+            console.log("祝日取得失敗", e);
+            holidays = [];
+        }
+    }
+    
+    function isHoliday(dateStr){
+        if(!dateStr) return false;
+    
+        if(holidays.includes(dateStr)) return true;
+    
+        let [y,m,d] = dateStr.split("-").map(Number);
+        let dt = new Date(y, m-1, d);
+    
+        return dt.getDay() === 0 || dt.getDay() === 6;
+    }
+    
 
-    let day = date.getDay();
+    /* =========================
+       24時間制限
+    ========================= */
+    function isBeforeLimit(dateStr, timeStr){
+        let [h,m] = timeStr.split(":").map(Number);
+        let [y,mo,d] = dateStr.split("-");
+    
+        let target = new Date(y, mo-1, d, h, m);
+        let now = new Date();
+        let limit = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    
+        return target < limit;
+    }
+    
+    /* =========================
+       時間取得
+    ========================= */
+    function loadTimes(date){
 
-    return day === 0 || day === 6;
-}
+        fetch('/get_times?data=' + date)
+        .then(res => res.json())
+        .then(list => {
+            console.log(list);
 
-/* =========================
-   24時間制限
-========================= */
-function isBeforeLimit(dateStr, timeStr){
-    let [h,m] = timeStr.split(":").map(Number);
+            let select = document.getElementById("time_select");
+            select.innerHTML = "";
 
-    let [y,mo,d] = dateStr.split("-");
-    let target = new Date(y, mo-1, d, h, m);
+            let hasOption = false;
 
-    let now = new Date();
-    let limit = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            list.forEach(t => {
 
-    return target < limit;
-}
+                if(isBeforeLimit(date, t)) return;
 
-/* =========================
-   時間表示
-========================= */
-function formatRange(t){
-    if(!t || !t.includes(":")) return "";
-    let [h,m] = t.split(":").map(Number);
+                hasOption = true;
 
-    let end = new Date();
-    end.setHours(h);
-    end.setMinutes(m + 30);
+                let opt = document.createElement("option");
+                opt.value = t;
+                opt.text = formatRange(t);
 
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}～${String(end.getHours()).padStart(2,'0')}:${String(end.getMinutes()).padStart(2,'0')}`;
-}
+                if(t === initTime){
+                    opt.selected = true;
+                }
 
-/* =========================
-   時間取得
-========================= */
-function loadTimes(date){
+                select.appendChild(opt);
+            });
 
-    fetch('/get_times?date=' + date)
-    .then(res => res.json())
-    .then(data => {
-
-        let select = document.getElementById("time_select");
-        select.innerHTML = "";
-
-        data.forEach(t => {
-
-            if(isBeforeLimit(date, t)) return;
-
-            let opt = document.createElement("option");
-            opt.value = t;
-            opt.text = formatRange(t);
-
-            if(t === initTime){
-                opt.selected = true;
+            if(hasOption){
+                document.getElementById("time").value = select.value;
+            } else {
+                document.getElementById("time").value = "";
             }
 
-            select.appendChild(opt);
+            select.onchange = () => {
+                document.getElementById("time").value = select.value;
+            };
+
         });
+    };
+    
+    /* =========================
+       カレンダー本体
+    ========================= */
+    document.addEventListener("DOMContentLoaded", async function(){
+    
+        await loadHolidays();
+    
+        let calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
+    
+            initialView: "dayGridMonth",
+            locale: "ja",
+            height: "auto",
+            firstDay: 1,
+    
+            validRange: (startDate && endDate) ? {
+                start: startDate,
+                end: addOneDay(endDate)
+            } : undefined,
+    
+            showNonCurrentDates: false,
+            fixedWeekCount: false,
+    
+            /* =========================
+               日付装飾
+            ========================= */
+            dayCellDidMount: function(arg){
+    
+                let dateStr = formatDate(arg.date);
+    
+                if(isHoliday(dateStr)){
+                    arg.el.classList.add("bg-holiday");
 
-        document.getElementById("time").value = select.value;
+                    // ★これ追加（超重要）
+                    arg.el.closest(".fc-daygrid-day").classList.add("bg-holiday");
+                }
+    
+                if(dateStr === initDate){
+                    arg.el.classList.add("bg-current");
+                }
+    
+                if(dateStr === selectedDate){
+                    arg.el.classList.add("bg-selected");
+                }
+            },
+    
+            /* =========================
+               クリック処理
+            ========================= */
+            dateClick: function(info){
 
-        select.onchange = () => {
-            document.getElementById("time").value = select.value;
-        };
-    });
-}
+                let selected = info.dateStr;
 
-/* =========================
-   カレンダー
-========================= */
-document.addEventListener("DOMContentLoaded", async function(){
-
-    await loadHolidays();
-
-    let calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
-
-        initialView: "dayGridMonth",
-        locale: "ja",
-        height: "auto",
-        firstDay: 1,
-
-        validRange: (startDate && endDate) ? {
-            start: startDate,
-            end: addOneDay(endDate)
-        } : undefined,
-
-        showNonCurrentDates: false,
-        fixedWeekCount: false,
-
-        /* ★ここが最大の違い（eventsやめた） */
-        dayCellClassNames: function(arg){
-
-            let d = arg.date;
-            let str = formatDate(d);
-
-            let classes = [];
-
-            if(isHoliday(str)){
-                classes.push("bg-holiday");
-            }
-
-            if(str === initDate){
-                classes.push("bg-current");
-            }
-
-            if(str === selectedDate){
-                classes.push("bg-selected");
-            }
-
-            return classes;
-        },
-
-        dateClick: function(info){
-
-            let selected = info.dateStr;
-
-            if(isHoliday(selected)){
-                alert("土日祝は予約できません");
-                return;
-            }
-
-            fetch('/check_day?date=' + selected)
-            .then(res => res.json())
-            .then(res => {
-
-                if(!res.ok){
-                    alert(res.message || "この日は予約できません");
+                if(isHoliday(selected)){
+                    alert("土日祝は予約できません");
                     return;
                 }
 
-                selectedDate = selected;
-                document.getElementById("date").value = selected;
+                fetch('/check_day?data=' + selected)
+                .then(res => res.json())
+                .then(res => {
 
-                loadTimes(selected);
+                    if(!res.ok){
+                        alert(res.message || "この日は予約できません");
+                        return;
+                    }
 
-                calendar.render(); // ★これで再描画
+                    selectedDate = selected;
+                    document.getElementById("data").value = selected;
+
+                    // ★全部の色を一旦リセット
+                    document.querySelectorAll(".fc-daygrid-day").forEach(el=>{
+                        el.classList.remove("bg-selected");
+                    });
+
+                    // ★クリックしたセルだけ色付け
+                    info.dayEl.classList.add("bg-selected");
+
+                    loadTimes(selected);
+                });
+            }
+    
+        });
+    
+        /* ★必ず1回だけ実行（ここ超重要） */
+        calendar.render();
+    
+        /* 初期値がある場合だけ反映 */
+        if(initDate){
+            selectedDate = initDate;
+            document.getElementById("data").value = initDate;
+            loadTimes(initDate);
+        }
+    
+    });
+    
+    window.addEventListener("DOMContentLoaded", function(){
+        const form = document.querySelector("form");
+        if(form){
+            form.addEventListener("submit", function(){
+                document.getElementById("loadingOverlay").style.display = "flex";
             });
         }
-
     });
-
-    calendar.render();
-
-    if(initDate){
-        selectedDate = initDate;
-        document.getElementById("date").value = initDate;
-        loadTimes(initDate);
-        calendar.render();
-    }
-
-});
-
-document.querySelector("form").addEventListener("submit", function(){
-    document.getElementById("loadingOverlay").style.display = "flex";
-});
-
-</script>
+    
+    </script>
 
 </body>
 </html>
