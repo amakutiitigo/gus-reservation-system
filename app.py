@@ -2,12 +2,19 @@
 # 環境変数ロード
 # =========================
 from dotenv import load_dotenv
-load_dotenv()
 
 # =========================
 # 標準ライブラリ
 # =========================
 import os
+load_dotenv()
+
+print("SUPABASE_URL =", os.getenv("SUPABASE_URL"))
+print("SUPABASE_KEY =", os.getenv("SUPABASE_KEY"))
+
+# =========================
+# 標準ライブラリ
+# =========================
 import io
 import smtplib
 from datetime import datetime, timedelta
@@ -1123,7 +1130,7 @@ def edit():
     data = res.data[0] if res.data else None
 
     if not data:
-        return "予約データがありません"
+        return render_template("no_reservation.html")
 
     # ----------------------------
     # 期間取得
