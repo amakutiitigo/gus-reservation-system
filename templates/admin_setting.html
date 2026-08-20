@@ -50,6 +50,17 @@ button {
     <div>終了日</div>
     <input type="date" name="end_data" value="{{ end }}" required>
 
+    <!-- ★ここを追加 -->
+    <div>1枠あたりの定員</div>
+    <input
+        type="number"
+        name="capacity"
+        value="{{ capacity }}"
+        min="1"
+        max="99"
+        required
+    >
+
     <button type="submit">保存</button>
 
 </form>

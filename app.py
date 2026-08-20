@@ -9,9 +9,6 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
-print("SUPABASE_URL =", os.getenv("SUPABASE_URL"))
-print("SUPABASE_KEY =", os.getenv("SUPABASE_KEY"))
-
 # =========================
 # 標準ライブラリ
 # =========================
@@ -35,6 +32,10 @@ from email.utils import formataddr
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 app.permanent_session_lifetime = timedelta(days=7)
+
+print(os.getenv("SECRET_KEY"))
+print(os.getenv("SUPABASE_URL"))
+print(os.getenv("SUPABASE_KEY"))
 
 # =========================
 # Supabase接続
@@ -258,7 +259,7 @@ def admin_menu():
     # ② 予約可能期間（settingsから取得）
     # -----------------------------
     setting_res = supabase.table("settings") \
-        .select("start_data,end_data") \
+        .select("start_data,end_data,capacity") \
         .eq("id", 1) \
         .limit(1) \
         .execute()
@@ -267,6 +268,7 @@ def admin_menu():
 
     start_data = setting.get("start_data") if setting else None
     end_data = setting.get("end_data") if setting else None
+    capacity = setting.get("capacity", 1) if setting else 1
 
     # -----------------------------
     # ③ 画面へ
@@ -275,8 +277,10 @@ def admin_menu():
         'admin_menu.html',
         blocks=blocks,
         start_data=start_data,
-        end_data=end_data
+        end_data=end_data,
+        capacity=capacity
     )
+    
 
 # ---------------- 予約可能期間設定 ----------------
 @app.route('/admin_setting')
@@ -294,21 +298,19 @@ def admin_setting():
     start = setting.get("start_data", "") if setting else ""
     end = setting.get("end_data", "") if setting else ""
 
+    # 定員
+    capacity = setting.get("capacity", 1) if setting else 1
+
     return render_template(
         "admin_setting.html",
         start=start,
-        end=end
+        end=end,
+        capacity=capacity
     )
 
 
 @app.route('/save_setting', methods=['POST'])
 def save_setting():
-
-    start_data = request.form.get('start_data')
-    end_data = request.form.get('end_data')
-
-    if not start_data or not end_data:
-        return redirect('/admin_setting')
 
     # ---------------- ログインチェック
     if not session.get('login'):
@@ -317,12 +319,27 @@ def save_setting():
     # ---------------- フォーム取得
     start_data = request.form.get('start_data')
     end_data = request.form.get('end_data')
+    capacity = request.form.get('capacity')
 
-    # ---------------- Supabase保存（UPSERT）
+    # ---------------- 入力チェック
+    if not start_data or not end_data or not capacity:
+        return redirect('/admin_setting')
+
+    try:
+        capacity = int(capacity)
+    except ValueError:
+        return redirect('/admin_setting')
+
+    # 定員は1人以上
+    if capacity < 1:
+        return redirect('/admin_setting')
+
+    # ---------------- Supabase保存
     supabase.table("settings").upsert({
         "id": 1,
         "start_data": start_data,
-        "end_data": end_data
+        "end_data": end_data,
+        "capacity": capacity
     }).execute()
 
     # ---------------- 完了
@@ -500,6 +517,66 @@ def admin_edit(id):
         )
 
     return render_template("admin_edit.html", data=data)
+
+# ---------------- 管理者による予約強制変更 ----------------
+@app.route('/admin_edit_save', methods=['POST'])
+def admin_edit_save():
+
+    if not session.get('login'):
+        return redirect('/login')
+
+    reservation_id = request.form.get('id')
+
+    if not reservation_id:
+        return redirect('/admin')
+
+    # フォームから取得
+    data = request.form.get('date')
+    time = request.form.get('time')
+    name = request.form.get('name')
+    phone = request.form.get('phone')
+    address = request.form.get('address')
+    email = request.form.get('email')
+
+    # 入力チェック
+    if not data or not time:
+        return "日付と時間は必須です"
+
+    time = time[:5]
+
+    # --------------------------------
+    # 同じ日時に別の予約がないか確認
+    # --------------------------------
+    check = supabase.table("reservations") \
+        .select("id") \
+        .eq("data", data) \
+        .eq("time", time) \
+        .eq("is_deleted", False) \
+        .neq("id", int(reservation_id)) \
+        .execute()
+
+    if check.data:
+        return "この日時にはすでに別の予約があります"
+
+    # --------------------------------
+    # 強制更新
+    # --------------------------------
+    result = supabase.table("reservations") \
+        .update({
+            "data": data,
+            "time": time,
+            "name": name,
+            "phone": phone,
+            "address": address,
+            "email": email,
+            "is_confirmed": False
+        }) \
+        .eq("id", int(reservation_id)) \
+        .execute()
+
+    print("管理者強制更新結果:", result)
+
+    return redirect('/admin')
 
 # ---------------- edit_save ---------------
 @app.route('/edit_save', methods=['POST'])
@@ -862,18 +939,20 @@ def new():
     )
 
 # ---------------- get_times ----------------
+# ---------------- get_times ----------------
 @app.route('/get_times')
 def get_times():
 
     data = request.args.get('data')
+
     if not data:
         return jsonify([])
 
     # =========================
-    # ① settings取得（Supabase化）
+    # ① settings取得
     # =========================
     setting_res = supabase.table("settings") \
-        .select("start_data,end_data") \
+        .select("start_data,end_data,capacity") \
         .eq("id", 1) \
         .limit(1) \
         .execute()
@@ -891,7 +970,20 @@ def get_times():
             return jsonify([])
 
     # =========================
-    # ② 予約取得（Supabase）
+    # ② 定員取得
+    # =========================
+    capacity = setting.get("capacity", 1) if setting else 1
+
+    try:
+        capacity = int(capacity)
+    except:
+        capacity = 1
+
+    if capacity < 1:
+        capacity = 1
+
+    # =========================
+    # ③ 予約取得
     # =========================
     res = supabase.table("reservations") \
         .select("time") \
@@ -899,13 +991,19 @@ def get_times():
         .eq("is_deleted", False) \
         .execute()
 
-    reserved = set()
+    # 時間ごとの予約人数
+    reserved_count = {}
+
     for r in (res.data or []):
+
         if r.get("time"):
-            reserved.add(r["time"][:5])
+
+            t = r["time"][:5]
+
+            reserved_count[t] = reserved_count.get(t, 0) + 1
 
     # =========================
-    # ③ ブロック取得（Supabase化）
+    # ④ ブロック取得
     # =========================
     block_res = supabase.table("blocked_times") \
         .select("start_time,end_time") \
@@ -913,14 +1011,19 @@ def get_times():
         .execute()
 
     blocks = []
+
     for r in (block_res.data or []):
-        blocks.append((r["start_time"], r["end_time"]))
+
+        blocks.append(
+            (
+                r["start_time"],
+                r["end_time"]
+            )
+        )
 
     # =========================
-    # ④ 時間生成
+    # ⑤ 時間生成
     # =========================
-    limit_time = datetime.now(JST) + timedelta(hours=24)
-
     slots = []
 
     start = datetime.strptime("09:30", "%H:%M")
@@ -930,43 +1033,58 @@ def get_times():
 
         t = start.strftime("%H:%M")
 
+        # =========================
+        # 定員チェック
+        # =========================
+        if reserved_count.get(t, 0) >= capacity:
+
+            start += timedelta(minutes=30)
+
+            continue
+
+        # =========================
+        # ブロックチェック
+        # =========================
         current_dt = datetime.strptime(
             data + " " + t,
             "%Y-%m-%d %H:%M"
         ).replace(tzinfo=JST)
 
-        # ①予約済みチェック
-        if t in reserved:
-            start += timedelta(minutes=30)
-            continue
-
-        # ②ブロックチェック
         blocked = False
 
         for b_start, b_end in blocks:
 
-            bs = datetime.strptime(data + " " + b_start, "%Y-%m-%d %H:%M").replace(tzinfo=JST)
-            be = datetime.strptime(data + " " + b_end, "%Y-%m-%d %H:%M").replace(tzinfo=JST)
+            bs = datetime.strptime(
+                data + " " + b_start[:5],
+                "%Y-%m-%d %H:%M"
+            ).replace(tzinfo=JST)
+
+            be = datetime.strptime(
+                data + " " + b_end[:5],
+                "%Y-%m-%d %H:%M"
+            ).replace(tzinfo=JST)
 
             # 日跨ぎ対応
             if be <= bs:
                 be += timedelta(days=1)
 
             if bs <= current_dt < be:
+
                 blocked = True
+
                 break
 
         if blocked:
+
             start += timedelta(minutes=30)
+
             continue
 
-        # ③24時間ルール
-        #if current_dt < limit_time:
-        #    start += timedelta(minutes=30)
-        #    continue
-
-        # OK
+        # =========================
+        # 予約可能
+        # =========================
         slots.append(t)
+
         start += timedelta(minutes=30)
 
     return jsonify(slots)

@@ -46,12 +46,15 @@ button {
 
 <!-- ★ここが追加ポイント -->
 <div class="notice">
+
 {% if start_data %}
-    予約可能期間：{{ start_data }} ～ {{ end_data }}
+    予約可能期間：{{ start_data }} ～ {{ end_data }}<br>
+    1枠あたりの予約定員：{{ capacity }}名
 {% else %}
     ⚠ 予約可能期間が未設定です
 {% endif %}
-</div>
+    
+    </div>
 
 <form action="/admin_setting">
     <button type="submit" class="btn-orange">予約可能期間設定</button>
