@@ -1,81 +1,325 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
+
 <head>
 <meta charset="UTF-8">
-<title>予約可能期間設定</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>予約設定</title>
 
 <style>
+
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: sans-serif;
-    text-align: center;
-    padding-top: 50px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+
+    background: #f5f6f8;
+    color: #333;
+
+    margin: 0;
+    padding: 40px 15px;
 }
 
 .container {
-    width: 300px;
-    margin: auto;
-}
-
-input {
     width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    font-size: 16px;
+    max-width: 420px;
+    margin: 0 auto;
 }
 
+h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 24px;
+}
+
+/* 設定カード */
+.setting-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 25px 22px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+/* 各設定項目 */
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 7px;
+}
+
+/* 入力欄 */
+input,
+select {
+    width: 100%;
+    height: 46px;
+    padding: 0 12px;
+
+    font-size: 16px;
+
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: #fff;
+
+    box-sizing: border-box;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76,175,80,0.15);
+}
+
+/* 保存ボタン */
 button {
     width: 100%;
-    padding: 12px;
-    margin-top: 15px;
+    height: 46px;
+
+    margin-top: 8px;
+
     font-size: 16px;
+    font-weight: bold;
+
     border: none;
-    border-radius: 8px;
+    border-radius: 7px;
+
     background: #4CAF50;
     color: white;
+
+    cursor: pointer;
 }
+
+button:hover {
+    opacity: 0.9;
+}
+
+/* 解除ボタン */
+.delete-button {
+    background: #f44336;
+    margin-top: 12px;
+}
+
+/* 戻るボタン */
+.back-button {
+    background: #777;
+    margin-top: 12px;
+}
+
+/* 区切り線 */
+.section-title {
+    font-size: 17px;
+    font-weight: bold;
+
+    margin-top: 28px;
+    margin-bottom: 18px;
+
+    padding-bottom: 8px;
+
+    border-bottom: 2px solid #eee;
+}
+
+/* 予約時間を横並び */
+.time-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.time-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.time-separator {
+    padding-top: 23px;
+    font-weight: bold;
+}
+
+/* スマホ */
+@media (max-width: 480px) {
+
+    body {
+        padding: 25px 12px;
+    }
+
+    .setting-card {
+        padding: 20px 16px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+}
+
 </style>
+
 </head>
 
 <body>
 
-<h2>予約可能期間設定</h2>
-
 <div class="container">
 
-<form method="POST" action="/save_setting">
+    <h2>予約設定</h2>
 
-    <div>開始日</div>
-    <input type="date" name="start_data" value="{{ start }}" required>
+    <div class="setting-card">
 
-    <div>終了日</div>
-    <input type="date" name="end_data" value="{{ end }}" required>
+        <form method="POST" action="/save_setting">
 
-    <!-- ★ここを追加 -->
-    <div>1枠あたりの定員</div>
-    <input
-        type="number"
-        name="capacity"
-        value="{{ capacity }}"
-        min="1"
-        max="99"
-        required
-    >
+            <!-- 予約可能期間 -->
+            <div class="section-title">
+                予約可能期間
+            </div>
 
-    <button type="submit">保存</button>
+            <div class="form-group">
+                <label>開始日</label>
+                <input
+                    type="date"
+                    name="start_data"
+                    value="{{ start }}"
+                    required
+                >
+            </div>
 
-</form>
+            <div class="form-group">
+                <label>終了日</label>
+                <input
+                    type="date"
+                    name="end_data"
+                    value="{{ end }}"
+                    required
+                >
+            </div>
 
-<form method="POST" action="/clear_setting">
-    <button type="submit" style="background:#f44336;">
-        予約可能期間を解除
-    </button>
-</form>
 
-<form action="/admin_menu">
-    <button type="submit">戻る</button>
-</form>
+            <!-- 定員 -->
+            <div class="section-title">
+                予約枠
+            </div>
+
+            <div class="form-group">
+                <label>1枠あたりの定員</label>
+
+                <input
+                    type="number"
+                    name="capacity"
+                    value="{{ capacity }}"
+                    min="1"
+                    max="99"
+                    required
+                >
+            </div>
+
+
+            <!-- 予約時間 -->
+            <div class="section-title">
+                予約時間
+            </div>
+
+            <div class="time-row">
+
+                <div class="form-group">
+                    <label>開始時間</label>
+
+                    <input
+                        type="time"
+                        name="start_time"
+                        value="{{ start_time }}"
+                        required
+                    >
+                </div>
+
+                <div class="time-separator">
+                    ～ 
+                </div>
+
+                <div class="form-group">
+                    <label>終了時間（最終開始時間）</label>
+
+                    <input
+                        type="time"
+                        name="end_time"
+                        value="{{ end_time }}"
+                        required
+                    >
+                </div>
+
+            </div>
+
+
+            <!-- 予約間隔 -->
+            <div class="form-group" style="margin-top:20px;">
+
+                <label>予約間隔</label>
+
+                <select name="interval">
+
+                    <option value="15"
+                        {% if interval == 15 %}selected{% endif %}>
+                        15分
+                    </option>
+
+                    <option value="30"
+                        {% if interval == 30 %}selected{% endif %}>
+                        30分
+                    </option>
+
+                    <option value="60"
+                        {% if interval == 60 %}selected{% endif %}>
+                        60分
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- 保存 -->
+            <button type="submit">
+                設定を保存
+            </button>
+
+        </form>
+
+
+        <!-- 解除 -->
+        <form method="POST" action="/clear_setting">
+
+            <button
+                type="submit"
+                class="delete-button"
+            >
+                予約可能期間を解除
+            </button>
+
+        </form>
+
+
+        <!-- 戻る -->
+        <form action="/admin_menu">
+
+            <button
+                type="submit"
+                class="back-button"
+            >
+                管理者メニューへ戻る
+            </button>
+
+        </form>
+
+    </div>
 
 </div>
 
 </body>
+
 </html>

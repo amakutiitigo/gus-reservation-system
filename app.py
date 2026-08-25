@@ -59,6 +59,10 @@ def send_admin_mail(subject, body):
     SMTP_USER = os.getenv("SMTP_USER")
     SMTP_PASS = os.getenv("SMTP_PASS")
 
+    print("SMTP_USER =", SMTP_USER)
+    print("SMTP_PASS =", "あり" if SMTP_PASS else "なし")
+    print("ADMIN_EMAIL =", ADMIN_EMAIL)
+
     if not SMTP_USER or not SMTP_PASS or not ADMIN_EMAIL:
         print("SMTP環境変数が不足しています")
         return
@@ -301,11 +305,19 @@ def admin_setting():
     # 定員
     capacity = setting.get("capacity", 1) if setting else 1
 
+    # 予約時間設定
+    start_time = setting.get("start_time", "09:30") if setting else "09:30"
+    end_time = setting.get("end_time", "17:00") if setting else "17:00"
+    interval = setting.get("interval", 30) if setting else 30
+
     return render_template(
         "admin_setting.html",
         start=start,
         end=end,
-        capacity=capacity
+        capacity=capacity,
+        start_time=start_time,
+        end_time=end_time,
+        interval=interval
     )
 
 
@@ -321,17 +333,29 @@ def save_setting():
     end_data = request.form.get('end_data')
     capacity = request.form.get('capacity')
 
+    # 予約枠設定
+    start_time = request.form.get('start_time')
+    end_time = request.form.get('end_time')
+    interval = request.form.get('interval')
+
     # ---------------- 入力チェック
     if not start_data or not end_data or not capacity:
         return redirect('/admin_setting')
 
+    if not start_time or not end_time or not interval:
+        return redirect('/admin_setting')
+
     try:
         capacity = int(capacity)
+        interval = int(interval)
     except ValueError:
         return redirect('/admin_setting')
 
     # 定員は1人以上
     if capacity < 1:
+        return redirect('/admin_setting')
+    
+    if interval not in [15, 30, 60]:
         return redirect('/admin_setting')
 
     # ---------------- Supabase保存
@@ -339,7 +363,10 @@ def save_setting():
         "id": 1,
         "start_data": start_data,
         "end_data": end_data,
-        "capacity": capacity
+        "capacity": capacity,
+        "start_time": start_time,
+        "end_time": end_time,
+        "interval": interval
     }).execute()
 
     # ---------------- 完了
@@ -917,6 +944,11 @@ def new():
     start_data = setting.get("start_data") if setting else ""
     end_data = setting.get("end_data") if setting else ""
 
+    # ★予約時間設定
+    start_time = setting.get("start_time", "09:30") if setting else "09:30"
+    end_time = setting.get("end_time", "17:00") if setting else "17:00"
+    interval = setting.get("interval", 30) if setting else 30
+
     # ★デフォルト
     data = {
         "data": "",
@@ -935,10 +967,12 @@ def new():
         "new.html",
         data=data,
         start_data=start_data,
-        end_data=end_data
+        end_data=end_data,
+        start_time=start_time,
+        end_time=end_time,
+        interval=interval
     )
 
-# ---------------- get_times ----------------
 # ---------------- get_times ----------------
 @app.route('/get_times')
 def get_times():
@@ -952,7 +986,7 @@ def get_times():
     # ① settings取得
     # =========================
     setting_res = supabase.table("settings") \
-        .select("start_data,end_data,capacity") \
+        .select("start_data,end_data,capacity,start_time,end_time,interval") \
         .eq("id", 1) \
         .limit(1) \
         .execute()
@@ -970,9 +1004,25 @@ def get_times():
             return jsonify([])
 
     # =========================
-    # ② 定員取得
+    # ② 設定取得
     # =========================
     capacity = setting.get("capacity", 1) if setting else 1
+
+    start_time = setting.get("start_time", "09:30") if setting else "09:30"
+    end_time = setting.get("end_time", "17:00") if setting else "17:00"
+    
+    start_time = start_time[:5]
+    end_time = end_time[:5]
+    
+    interval = setting.get("interval", 30) if setting else 30
+
+    try:
+        interval = int(interval)
+    except:
+        interval = 30
+
+    if interval < 1:
+        interval = 30
 
     try:
         capacity = int(capacity)
@@ -991,7 +1041,6 @@ def get_times():
         .eq("is_deleted", False) \
         .execute()
 
-    # 時間ごとの予約人数
     reserved_count = {}
 
     for r in (res.data or []):
@@ -1026,25 +1075,21 @@ def get_times():
     # =========================
     slots = []
 
-    start = datetime.strptime("09:30", "%H:%M")
-    end = datetime.strptime("16:30", "%H:%M")
+    start = datetime.strptime(start_time, "%H:%M")
+    end = datetime.strptime(end_time, "%H:%M")
 
     while start <= end:
 
         t = start.strftime("%H:%M")
 
-        # =========================
         # 定員チェック
-        # =========================
         if reserved_count.get(t, 0) >= capacity:
 
-            start += timedelta(minutes=30)
+            start += timedelta(minutes=interval)
 
             continue
 
-        # =========================
         # ブロックチェック
-        # =========================
         current_dt = datetime.strptime(
             data + " " + t,
             "%Y-%m-%d %H:%M"
@@ -1064,7 +1109,6 @@ def get_times():
                 "%Y-%m-%d %H:%M"
             ).replace(tzinfo=JST)
 
-            # 日跨ぎ対応
             if be <= bs:
                 be += timedelta(days=1)
 
@@ -1076,16 +1120,13 @@ def get_times():
 
         if blocked:
 
-            start += timedelta(minutes=30)
+            start += timedelta(minutes=interval)
 
             continue
 
-        # =========================
-        # 予約可能
-        # =========================
         slots.append(t)
 
-        start += timedelta(minutes=30)
+        start += timedelta(minutes=interval)
 
     return jsonify(slots)
 
@@ -1175,11 +1216,63 @@ def create_confirm():
 def check_day():
 
     data = request.args.get('data')
+
     if not data:
         return jsonify({"ok": False})
 
     # -------------------------------
-    # blocked_times（Supabase取得）
+    # settings取得
+    # -------------------------------
+    setting_res = supabase.table("settings") \
+        .select("start_data,end_data,start_time,end_time,interval") \
+        .eq("id", 1) \
+        .limit(1) \
+        .execute()
+
+    setting = setting_res.data[0] if setting_res.data else None
+
+    if not setting:
+        return jsonify({
+            "ok": False,
+            "message": "予約設定がありません"
+        })
+
+    start_data = setting.get("start_data")
+    end_data = setting.get("end_data")
+
+    # 予約可能期間外
+    if start_data and data < start_data:
+        return jsonify({
+            "ok": False,
+            "message": "この日は予約できません"
+        })
+
+    if end_data and data > end_data:
+        return jsonify({
+            "ok": False,
+            "message": "この日は予約できません"
+        })
+
+    # -------------------------------
+    # 予約時間設定
+    # -------------------------------
+    start_time = setting.get("start_time", "09:30")
+    end_time = setting.get("end_time", "17:00")
+
+    # Supabaseから「09:30:00」の形式で返ってきても対応
+    start_time = start_time[:5]
+    end_time = end_time[:5]
+
+    try:
+        interval = int(setting.get("interval", 30))
+    except:
+        interval = 30
+
+    if interval < 1:
+        interval = 30
+
+    # -------------------------------
+    # blocked_times取得
     # -------------------------------
     res = supabase.table("blocked_times") \
         .select("start_time,end_time") \
@@ -1189,18 +1282,21 @@ def check_day():
     blocks = res.data or []
 
     # -------------------------------
-    # 予約枠（固定）
+    # 予約枠生成
     # -------------------------------
     slots = []
-    start = datetime.strptime("09:30", "%H:%M")
-    end = datetime.strptime("16:30", "%H:%M")
+
+    start = datetime.strptime(start_time, "%H:%M")
+    end = datetime.strptime(end_time, "%H:%M")
 
     while start <= end:
+
         slots.append(start.strftime("%H:%M"))
-        start += timedelta(minutes=30)
+
+        start += timedelta(minutes=interval)
 
     # -------------------------------
-    # ブロック削除ロジック
+    # ブロック削除
     # -------------------------------
     for b in blocks:
 
@@ -1210,12 +1306,14 @@ def check_day():
         if not b_start or not b_end:
             continue
 
-        bs = datetime.strptime(b_start, "%H:%M")
-        be = datetime.strptime(b_end, "%H:%M")
+        bs = datetime.strptime(b_start[:5], "%H:%M")
+        be = datetime.strptime(b_end[:5], "%H:%M")
 
         slots = [
             t for t in slots
-            if not (bs <= datetime.strptime(t, "%H:%M") < be)
+            if not (
+                bs <= datetime.strptime(t, "%H:%M") < be
+            )
         ]
 
     # -------------------------------

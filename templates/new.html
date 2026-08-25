@@ -201,6 +201,10 @@
 
     let startDate = "{{ start_data or '' }}";
     let endDate = "{{ end_data or '' }}";
+
+    let startTime = "{{ start_time or '09:30' }}";
+    let endTime = "{{ end_time or '17:00' }}";
+    let interval = {{ interval or 30 }};
     
     let initDate = "{{ data.data or '' }}";
     let initTime = "{{ data.time or '' }}";
@@ -214,7 +218,7 @@
         let [h, m] = timeStr.split(":").map(Number);
 
         let start = new Date(2000, 0, 1, h, m);
-        let end = new Date(start.getTime() + 30 * 60000);
+        let end = new Date(start.getTime() + interval * 60000);
 
         let sh = String(start.getHours()).padStart(2, '0');
         let sm = String(start.getMinutes()).padStart(2, '0');
@@ -399,12 +403,10 @@
                     selectedDate = selected;
                     document.getElementById("data").value = selected;
 
-                    // ★全部の色を一旦リセット
                     document.querySelectorAll(".fc-daygrid-day").forEach(el=>{
                         el.classList.remove("bg-selected");
                     });
 
-                    // ★クリックしたセルだけ色付け
                     info.dayEl.classList.add("bg-selected");
 
                     loadTimes(selected);
