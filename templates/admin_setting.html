@@ -263,6 +263,11 @@ button:hover {
 
                 <select name="interval">
 
+                    <option value="10"
+                        {% if interval == 10 %}selected{% endif %}>
+                        10分
+                    </option>
+                    
                     <option value="15"
                         {% if interval == 15 %}selected{% endif %}>
                         15分
