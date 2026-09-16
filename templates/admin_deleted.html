@@ -88,11 +88,19 @@ th {
     color: white;
     padding: 6px 10px;
     border-radius: 6px;
+    cursor: pointer;
 }
 
 .delete-btn {
     background: #e74c3c;
     margin-top: 10px;
+    cursor: pointer;
+}
+
+/* 復活フォーム */
+.restore-form {
+    display: inline;
+    margin: 0;
 }
 
 </style>
@@ -111,38 +119,84 @@ th {
     <a href="/logout">ログアウト</a>
 </div>
 
+
 <!-- 検索 -->
 <form method="GET" action="/admin_deleted" class="search">
 
     <div>
         <div style="font-size:12px;">予約日時</div>
-        <input type="date" name="data_from" value="{{ request.args.get('data_from','') }}">
+
+        <input
+            type="date"
+            name="data_from"
+            value="{{ request.args.get('data_from','') }}"
+        >
+
         〜
-        <input type="date" name="data_to" value="{{ request.args.get('data_to','') }}">
+
+        <input
+            type="date"
+            name="data_to"
+            value="{{ request.args.get('data_to','') }}"
+        >
     </div>
+
 
     <div>
         <div style="font-size:12px;">氏名</div>
-        <input type="text" name="name" value="{{ request.args.get('name','') }}">
+
+        <input
+            type="text"
+            name="name"
+            value="{{ request.args.get('name','') }}"
+        >
     </div>
+
 
     <div>
         <div style="font-size:12px;">お客様コード</div>
-        <input type="text" name="code" value="{{ request.args.get('code','') }}">
+
+        <input
+            type="text"
+            name="code"
+            value="{{ request.args.get('code','') }}"
+        >
     </div>
 
-    <button type="submit">検索</button>
-    <button type="button" onclick="location.href='/admin_deleted'">リセット</button>
+
+    <button type="submit">
+        検索
+    </button>
+
+
+    <button
+        type="button"
+        onclick="location.href='/admin_deleted'"
+    >
+        リセット
+    </button>
 
 </form>
 
 
-<!-- 一括削除 -->
-<form method="POST" action="/admin_bulk_delete">
+<!--
+    一括完全削除用フォーム
+
+    テーブル全体をこのフォームで囲まない。
+    これが重要。
+-->
+<form
+    id="bulkDeleteForm"
+    method="POST"
+    action="/admin_bulk_delete">
+</form>
+
 
 <label>
-    <input type="checkbox" id="all"> 全選択
+    <input type="checkbox" id="all">
+    全選択
 </label>
+
 
 <table>
 
@@ -161,17 +215,33 @@ th {
 </tr>
 </thead>
 
+
 <tbody>
 
 {% for r in reservations %}
+
 <tr>
 
+    <!-- 一括削除用チェックボックス -->
     <td>
-        <input type="checkbox" name="ids" value="{{ r.id }}">
+        <input
+            type="checkbox"
+            name="ids"
+            value="{{ r.id }}"
+            form="bulkDeleteForm"
+        >
     </td>
 
-    <td>{{ r.data }}</td>
-    <td>{{ r.time }}</td>
+
+    <td>
+        {{ r.data }}
+    </td>
+
+
+    <td>
+        {{ r.time }}
+    </td>
+
 
     <td>
         {% if r.created_at %}
@@ -181,65 +251,97 @@ th {
         {% endif %}
     </td>
 
-    <td>{{ r.consumer_code }}</td>
-    <td>{{ r.name }}</td>
-    <td>{{ r.address }}</td>
-    <td>{{ r.phone }}</td>
-
-    <td>{{ r.status }}</td>
 
     <td>
-        <button
-            type="button"
-            class="restore-btn"
-            onclick="restoreReservation('{{ r.id }}')">
-            復活
-        </button>
+        {{ r.consumer_code }}
+    </td>
+
+
+    <td>
+        {{ r.name }}
+    </td>
+
+
+    <td>
+        {{ r.address }}
+    </td>
+
+
+    <td>
+        {{ r.phone }}
+    </td>
+
+
+    <td>
+        {{ r.status }}
+    </td>
+
+
+    <!--
+        復活ボタン
+
+        一括削除フォームとは完全に別のフォーム。
+        そのため formaction は使わない。
+    -->
+    <td>
+
+        <form
+            method="POST"
+            action="{{ url_for('admin_restore', id=r.id) }}"
+            class="restore-form"
+            onsubmit="return confirm('この予約を復活しますか？');"
+        >
+
+            <button
+                type="submit"
+                class="restore-btn"
+            >
+                復活
+            </button>
+
+        </form>
+
     </td>
 
 </tr>
+
 {% endfor %}
 
 </tbody>
 
 </table>
 
-<button type="submit"
-        class="delete-btn"
-        onclick="return confirm('選択したデータを完全削除しますか？');">
+
+<!-- 一括完全削除 -->
+
+<button
+    type="submit"
+    form="bulkDeleteForm"
+    class="delete-btn"
+    onclick="return confirm('選択したデータを完全削除しますか？');"
+>
     一括完全削除
 </button>
 
-</form>
 
 </div>
+
 
 <script>
 
 document.getElementById("all").addEventListener("change", function () {
-    
-    let boxes = document.querySelectorAll("input[name='ids']");
-    
-    boxes.forEach(b => b.checked = this.checked);
-    
+
+    let boxes = document.querySelectorAll(
+        "input[name='ids']"
+    );
+
+    boxes.forEach(function (b) {
+        b.checked = document.getElementById("all").checked;
+    });
+
 });
-    
-function restoreReservation(id) {
-    
-    fetch("/admin_restore", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: "id=" + id
-    })
-    .then(() => {
-            location.reload();
-        });
-    
-    }
-    
-    </script>
+
+</script>
 
 </body>
 </html>

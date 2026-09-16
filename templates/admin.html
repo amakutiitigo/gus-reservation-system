@@ -72,6 +72,45 @@ input {
     border: 1px solid #ccc;
 }
 
+/* 一括削除エリア */
+.bulk-area {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.bulk-area label {
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.bulk-count {
+    font-size: 14px;
+    color: #555;
+}
+
+.btn-bulk-delete {
+    background: #c0392b;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn-bulk-delete:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
 /* テーブル */
 table {
     width: 100%;
@@ -108,9 +147,17 @@ tr:hover {
     color: white;
 }
 
-.new { background: #3498db; }
-.edit { background: #f39c12; }
-.delete { background: #e74c3c; }
+.new {
+    background: #3498db;
+}
+
+.edit {
+    background: #f39c12;
+}
+
+.delete {
+    background: #e74c3c;
+}
 
 /* 確定 */
 .confirmed {
@@ -157,6 +204,13 @@ form {
 /* チェック */
 input[type="checkbox"] {
     transform: scale(1.2);
+    cursor: pointer;
+}
+
+/* 選択列 */
+.check-cell {
+    text-align: center;
+    width: 45px;
 }
 
 </style>
@@ -166,83 +220,218 @@ input[type="checkbox"] {
 
 <!-- ヘッダー -->
 <div class="header">
+
     <h1>予約管理画面</h1>
 
     <div class="topbar">
-        <a href="/admin_menu">🏠 メインメニューへ戻る</a>
-        <a href="/admin_deleted">🗑 削除済み一覧へ</a>
-        <a href="/admin_block">🚫 予約ブロック管理一覧へ</a>
-        <a href="/export_excel">📥 Excel出力</a>
-        <a href="/logout">ログアウト</a>
+
+        <a href="/admin_menu">
+            🏠 メインメニューへ戻る
+        </a>
+
+        <a href="/admin_deleted">
+            🗑 削除済み一覧へ
+        </a>
+
+        <a href="/admin_block">
+            🚫 予約ブロック管理一覧へ
+        </a>
+
+        <a href="/export_excel">
+            📥 Excel出力
+        </a>
+
+        <a href="/logout">
+            ログアウト
+        </a>
+
     </div>
+
 </div>
+
 
 <div class="container">
 
+
 <!-- 検索 -->
-<form method="GET" action="/admin" class="search">
+<form method="GET"
+      action="/admin"
+      class="search">
 
     <div>
-        <div style="font-size:12px;">予約日時</div>
 
-        <input type="date"
-               name="data_from"
-               value="{{ request.args.get('data_from','') }}">
+        <div style="font-size:12px;">
+            予約日時
+        </div>
+
+        <input
+            type="date"
+            name="data_from"
+            value="{{ request.args.get('data_from','') }}"
+        >
 
         〜
 
-        <input type="date"
-               name="data_to"
-               value="{{ request.args.get('data_to','') }}">
+        <input
+            type="date"
+            name="data_to"
+            value="{{ request.args.get('data_to','') }}"
+        >
+
     </div>
+
 
     <div>
-        <div style="font-size:12px;">氏名</div>
 
-        <input type="text"
-               name="name"
-               placeholder="氏名"
-               value="{{ request.args.get('name','') }}">
+        <div style="font-size:12px;">
+            氏名
+        </div>
+
+        <input
+            type="text"
+            name="name"
+            placeholder="氏名"
+            value="{{ request.args.get('name','') }}"
+        >
+
     </div>
+
 
     <div>
-        <div style="font-size:12px;">お客様コード</div>
 
-        <input type="text"
-               name="code"
-               placeholder="コード"
-               value="{{ request.args.get('code','') }}">
+        <div style="font-size:12px;">
+            お客様コード
+        </div>
+
+        <input
+            type="text"
+            name="code"
+            placeholder="コード"
+            value="{{ request.args.get('code','') }}"
+        >
+
     </div>
 
-    <button type="submit"
-            style="background:#2c3e50;color:white;">
+
+    <button
+        type="submit"
+        style="background:#2c3e50;color:white;"
+    >
         検索
     </button>
 
-    <button type="button"
-            onclick="location.href='/admin'">
+
+    <button
+        type="button"
+        onclick="location.href='/admin'"
+    >
         リセット
     </button>
 
 </form>
 
+
+<!-- 一括削除 -->
+<div class="bulk-area">
+
+    <label>
+
+        <input
+            type="checkbox"
+            id="selectAll"
+        >
+
+        全選択
+
+    </label>
+
+
+    <span
+        class="bulk-count"
+        id="selectedCount"
+    >
+        0件選択中
+    </span>
+
+
+    <form
+        id="bulkDeleteForm"
+        method="POST"
+        action="/admin_delete_selected"
+        onsubmit="return confirmBulkDelete()"
+    >
+
+        <button
+            type="submit"
+            class="btn-bulk-delete"
+            id="bulkDeleteButton"
+            disabled
+        >
+            選択した予約を削除
+        </button>
+
+    </form>
+
+</div>
+
+
 <!-- テーブル -->
 <table>
 
 <thead>
+
 <tr>
-    <th>予約日</th>
-    <th>予約時間</th>
-    <th>申込日時</th>
-    <th>お客様コード</th>
-    <th>氏名</th>
-    <th>住所</th>
-    <th>電話番号</th>
-    <th>メール</th>
-    <th>状態</th>
-    <th>操作</th>
+
+    <th class="check-cell">
+
+        選択
+
+    </th>
+
+    <th>
+        予約日
+    </th>
+
+    <th>
+        予約時間
+    </th>
+
+    <th>
+        申込日時
+    </th>
+
+    <th>
+        お客様コード
+    </th>
+
+    <th>
+        氏名
+    </th>
+
+    <th>
+        住所
+    </th>
+
+    <th>
+        電話番号
+    </th>
+
+    <th>
+        メール
+    </th>
+
+    <th>
+        状態
+    </th>
+
+    <th>
+        操作
+    </th>
+
 </tr>
+
 </thead>
+
 
 <tbody>
 
@@ -250,10 +439,32 @@ input[type="checkbox"] {
 
 <tr>
 
-    <td>{{ r.data }}</td>
 
+    <!-- 選択チェック -->
+    <td class="check-cell">
+
+        <input
+            type="checkbox"
+            class="reservation-check"
+            name="ids"
+            value="{{ r.id }}"
+            form="bulkDeleteForm"
+        >
+
+    </td>
+
+
+    <!-- 予約日 -->
     <td>
+        {{ r.data }}
+    </td>
+
+
+    <!-- 予約時間 -->
+    <td>
+
         {% if r.time %}
+
             {% set h = r.time[:2]|int %}
             {% set m = r.time[3:5]|int %}
 
@@ -261,74 +472,161 @@ input[type="checkbox"] {
             {% set end_m = m + 30 %}
 
             {% if end_m >= 60 %}
+
                 {% set end_h = end_h + 1 %}
                 {% set end_m = end_m - 60 %}
+
             {% endif %}
 
             {{ "%02d:%02d"|format(h, m) }}～{{ "%02d:%02d"|format(end_h, end_m) }}
+
         {% endif %}
+
     </td>
 
+
+    <!-- 申込日時 -->
     <td>
+
         {% if r.created_at %}
+
             {{ r.created_at[:19].replace("T", " ") }}
+
         {% else %}
+
             -
+
         {% endif %}
+
     </td>
 
-    <td>{{ r.consumer_code }}</td>
-    <td>{{ r.name }}</td>
-    <td>{{ r.address }}</td>
-    <td>{{ r.phone }}</td>
-    <td>{{ r.email or "" }}</td>
 
+    <!-- お客様コード -->
     <td>
-        <div style="display:flex; gap:8px; align-items:center;">
+        {{ r.consumer_code }}
+    </td>
 
-            <span class="badge
-            {% if r.status=='新規' %}new{% endif %}
-            {% if r.status=='変更' %}edit{% endif %}
-            {% if r.status=='削除' %}delete{% endif %}
-            ">
+
+    <!-- 氏名 -->
+    <td>
+        {{ r.name }}
+    </td>
+
+
+    <!-- 住所 -->
+    <td>
+        {{ r.address }}
+    </td>
+
+
+    <!-- 電話番号 -->
+    <td>
+        {{ r.phone }}
+    </td>
+
+
+    <!-- メール -->
+    <td>
+        {{ r.email or "" }}
+    </td>
+
+
+    <!-- 状態 -->
+    <td>
+
+        <div
+            style="
+                display:flex;
+                gap:8px;
+                align-items:center;
+            "
+        >
+
+            <span
+                class="badge
+                {% if r.status=='新規' %}new{% endif %}
+                {% if r.status=='変更' %}edit{% endif %}
+                {% if r.status=='削除' %}delete{% endif %}
+                "
+            >
                 {{ r.status }}
             </span>
 
+
             {% if r.is_confirmed %}
-                <span class="confirmed">確定</span>
+
+                <span class="confirmed">
+                    確定
+                </span>
+
             {% else %}
-                <span class="pending">未確定</span>
+
+                <span class="pending">
+                    未確定
+                </span>
+
             {% endif %}
 
-            <form method="POST" action="/toggle_confirm">
-                <input type="hidden" name="id" value="{{ r.id }}">
 
-                <input type="checkbox"
-                       name="confirmed"
-                       onchange="this.form.submit()"
-                       {% if r.is_confirmed %}checked{% endif %}>
+            <form
+                method="POST"
+                action="/toggle_confirm"
+            >
+
+                <input
+                    type="hidden"
+                    name="id"
+                    value="{{ r.id }}"
+                >
+
+
+                <input
+                    type="checkbox"
+                    name="confirmed"
+                    onchange="this.form.submit()"
+                    {% if r.is_confirmed %}checked{% endif %}
+                >
+
             </form>
 
         </div>
+
     </td>
 
+
+    <!-- 操作 -->
     <td class="status-cell">
 
+
+        <!-- 編集 -->
         <a href="/admin_edit/{{ r.id }}">
-            <button class="btn-edit">編集</button>
+
+            <button
+                type="button"
+                class="btn-edit"
+            >
+                編集
+            </button>
+
         </a>
 
-        <form method="POST"
-              action="/admin_delete"
-              onsubmit="return confirm('削除しますか？');">
 
-            <input type="hidden" name="id" value="{{ r.id }}">
+        <!-- 1件削除 -->
+        <form
+            method="POST"
+            action="/admin_delete/{{ r.id }}"
+            onsubmit="return confirm('削除しますか？');"
+        >
 
-            <button class="btn-delete">
+            <button
+                type="submit"
+                class="btn-delete"
+            >
                 削除
             </button>
 
         </form>
+
 
     </td>
 
@@ -341,6 +639,129 @@ input[type="checkbox"] {
 </table>
 
 </div>
+
+
+<script>
+
+/* ================================
+   一括選択
+================================ */
+
+const selectAll =
+    document.getElementById("selectAll");
+
+const reservationChecks =
+    document.querySelectorAll(".reservation-check");
+
+const selectedCount =
+    document.getElementById("selectedCount");
+
+const bulkDeleteButton =
+    document.getElementById("bulkDeleteButton");
+
+
+function updateSelectedCount() {
+
+    const checked =
+        document.querySelectorAll(
+            ".reservation-check:checked"
+        );
+
+    const count =
+        checked.length;
+
+
+    selectedCount.innerText =
+        count + "件選択中";
+
+
+    bulkDeleteButton.disabled =
+        count === 0;
+
+
+    if (count === reservationChecks.length &&
+        reservationChecks.length > 0) {
+
+        selectAll.checked = true;
+
+    } else {
+
+        selectAll.checked = false;
+
+    }
+
+}
+
+
+/* 全選択 */
+
+selectAll.addEventListener(
+    "change",
+    function() {
+
+        reservationChecks.forEach(
+            function(checkbox) {
+
+                checkbox.checked =
+                    selectAll.checked;
+
+            }
+        );
+
+        updateSelectedCount();
+
+    }
+);
+
+
+/* 個別チェック */
+
+reservationChecks.forEach(
+    function(checkbox) {
+
+        checkbox.addEventListener(
+            "change",
+            updateSelectedCount
+        );
+
+    }
+);
+
+
+/* ================================
+   一括削除確認
+================================ */
+
+function confirmBulkDelete() {
+
+    const checked =
+        document.querySelectorAll(
+            ".reservation-check:checked"
+        );
+
+
+    const count =
+        checked.length;
+
+
+    if (count === 0) {
+
+        alert("削除する予約を選択してください。");
+
+        return false;
+
+    }
+
+
+    return confirm(
+        count + "件の予約を削除しますか？"
+    );
+
+}
+
+
+</script>
+
 
 </body>
 </html>

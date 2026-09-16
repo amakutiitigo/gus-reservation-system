@@ -2,7 +2,9 @@
 <html lang="ja">
 
 <head>
+
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>予約設定</title>
@@ -14,59 +16,93 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                 "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
 
     background: #f5f6f8;
+
     color: #333;
 
     margin: 0;
+
     padding: 40px 15px;
 }
 
 .container {
+
     width: 100%;
+
     max-width: 420px;
+
     margin: 0 auto;
 }
 
 h2 {
+
     text-align: center;
+
     margin-bottom: 30px;
+
     font-size: 24px;
 }
 
+
 /* 設定カード */
+
 .setting-card {
+
     background: #fff;
+
     border-radius: 12px;
+
     padding: 25px 22px;
+
     box-shadow: 0 2px 10px rgba(0,0,0,0.08);
 }
 
+
 /* 各設定項目 */
+
 .form-group {
+
     margin-bottom: 20px;
 }
 
 label {
+
     display: block;
+
     font-weight: bold;
+
     font-size: 14px;
+
     margin-bottom: 7px;
 }
 
+
 /* 入力欄 */
+
 input,
 select {
+
     width: 100%;
+
     height: 46px;
+
     padding: 0 12px;
 
     font-size: 16px;
 
     border: 1px solid #ccc;
+
     border-radius: 7px;
+
     background: #fff;
 
     box-sizing: border-box;
@@ -74,52 +110,77 @@ select {
 
 input:focus,
 select:focus {
+
     outline: none;
+
     border-color: #4CAF50;
-    box-shadow: 0 0 0 2px rgba(76,175,80,0.15);
+
+    box-shadow:
+        0 0 0 2px rgba(76,175,80,0.15);
 }
 
+
 /* 保存ボタン */
+
 button {
+
     width: 100%;
+
     height: 46px;
 
     margin-top: 8px;
 
     font-size: 16px;
+
     font-weight: bold;
 
     border: none;
+
     border-radius: 7px;
 
     background: #4CAF50;
+
     color: white;
 
     cursor: pointer;
 }
 
 button:hover {
+
     opacity: 0.9;
 }
 
+
 /* 解除ボタン */
+
 .delete-button {
+
     background: #f44336;
+
     margin-top: 12px;
 }
+
 
 /* 戻るボタン */
+
 .back-button {
+
     background: #777;
+
     margin-top: 12px;
 }
 
+
 /* 区切り線 */
+
 .section-title {
+
     font-size: 17px;
+
     font-weight: bold;
 
     margin-top: 28px;
+
     margin-bottom: 18px;
 
     padding-bottom: 8px;
@@ -127,43 +188,57 @@ button:hover {
     border-bottom: 2px solid #eee;
 }
 
+
 /* 予約時間を横並び */
+
 .time-row {
+
     display: flex;
+
     align-items: center;
+
     gap: 10px;
 }
 
 .time-row .form-group {
+
     flex: 1;
+
     margin-bottom: 0;
 }
 
 .time-separator {
+
     padding-top: 23px;
+
     font-weight: bold;
 }
 
+
 /* スマホ */
+
 @media (max-width: 480px) {
 
     body {
+
         padding: 25px 12px;
     }
 
     .setting-card {
+
         padding: 20px 16px;
     }
 
     h2 {
+
         font-size: 22px;
     }
-
 }
 
 </style>
 
 </head>
+
 
 <body>
 
@@ -171,115 +246,187 @@ button:hover {
 
     <h2>予約設定</h2>
 
+
     <div class="setting-card">
 
-        <form method="POST" action="/save_setting">
 
-            <!-- 予約可能期間 -->
+        <!-- ========================================= -->
+        <!-- 予約可能期間 -->
+        <!-- ========================================= -->
+
+        <form
+            method="POST"
+            action="/save_setting"
+        >
+
             <div class="section-title">
                 予約可能期間
             </div>
 
+
             <div class="form-group">
-                <label>開始日</label>
+
+                <label>
+                    開始日
+                </label>
+
                 <input
                     type="date"
                     name="start_data"
-                    value="{{ start }}"
+                    value="{{ setting.get('start_data', '') or '' }}"
                     required
                 >
+
             </div>
 
+
             <div class="form-group">
-                <label>終了日</label>
+
+                <label>
+                    終了日
+                </label>
+
                 <input
                     type="date"
                     name="end_data"
-                    value="{{ end }}"
+                    value="{{ setting.get('end_data', '') or '' }}"
                     required
                 >
+
             </div>
 
 
-            <!-- 定員 -->
+            <!-- ========================================= -->
+            <!-- 予約枠 -->
+            <!-- ========================================= -->
+
             <div class="section-title">
                 予約枠
             </div>
 
+
             <div class="form-group">
-                <label>1枠あたりの定員</label>
+
+                <label>
+                    1枠あたりの定員
+                </label>
 
                 <input
                     type="number"
                     name="capacity"
-                    value="{{ capacity }}"
+                    value="{{ setting.get('capacity', 1) }}"
                     min="1"
                     max="99"
                     required
                 >
+
             </div>
 
 
+            <!-- ========================================= -->
             <!-- 予約時間 -->
+            <!-- ========================================= -->
+
             <div class="section-title">
                 予約時間
             </div>
 
+
             <div class="time-row">
 
+
                 <div class="form-group">
-                    <label>開始時間</label>
+
+                    <label>
+                        開始時間
+                    </label>
 
                     <input
                         type="time"
                         name="start_time"
-                        value="{{ start_time }}"
+                        value="{{ setting.get('start_time', '09:30') or '09:30' }}"
                         required
                     >
+
                 </div>
+
 
                 <div class="time-separator">
-                    ～ 
+                    ～
                 </div>
 
+
                 <div class="form-group">
-                    <label>終了時間（最終開始時間）</label>
+
+                    <label>
+                        終了時間
+                    </label>
 
                     <input
                         type="time"
                         name="end_time"
-                        value="{{ end_time }}"
+                        value="{{ setting.get('end_time', '17:00') or '17:00' }}"
                         required
                     >
+
                 </div>
+
 
             </div>
 
 
+            <!-- ========================================= -->
             <!-- 予約間隔 -->
-            <div class="form-group" style="margin-top:20px;">
+            <!-- ========================================= -->
 
-                <label>予約間隔</label>
+            <div
+                class="form-group"
+                style="margin-top:20px;"
+            >
+
+                <label>
+                    予約間隔
+                </label>
+
 
                 <select name="interval">
 
-                    <option value="10"
-                        {% if interval == 10 %}selected{% endif %}>
+                    <option
+                        value="10"
+                        {% if setting.get('interval', 30) == 10 %}
+                        selected
+                        {% endif %}
+                    >
                         10分
                     </option>
-                    
-                    <option value="15"
-                        {% if interval == 15 %}selected{% endif %}>
+
+
+                    <option
+                        value="15"
+                        {% if setting.get('interval', 30) == 15 %}
+                        selected
+                        {% endif %}
+                    >
                         15分
                     </option>
 
-                    <option value="30"
-                        {% if interval == 30 %}selected{% endif %}>
+
+                    <option
+                        value="30"
+                        {% if setting.get('interval', 30) == 30 %}
+                        selected
+                        {% endif %}
+                    >
                         30分
                     </option>
 
-                    <option value="60"
-                        {% if interval == 60 %}selected{% endif %}>
+
+                    <option
+                        value="60"
+                        {% if setting.get('interval', 30) == 60 %}
+                        selected
+                        {% endif %}
+                    >
                         60分
                     </option>
 
@@ -288,7 +435,10 @@ button:hover {
             </div>
 
 
+            <!-- ========================================= -->
             <!-- 保存 -->
+            <!-- ========================================= -->
+
             <button type="submit">
                 設定を保存
             </button>
@@ -296,8 +446,14 @@ button:hover {
         </form>
 
 
-        <!-- 解除 -->
-        <form method="POST" action="/clear_setting">
+        <!-- ========================================= -->
+        <!-- 予約可能期間を解除 -->
+        <!-- ========================================= -->
+
+        <form
+            method="POST"
+            action="/clear_setting"
+        >
 
             <button
                 type="submit"
@@ -309,7 +465,10 @@ button:hover {
         </form>
 
 
+        <!-- ========================================= -->
         <!-- 戻る -->
+        <!-- ========================================= -->
+
         <form action="/admin_menu">
 
             <button
@@ -320,6 +479,7 @@ button:hover {
             </button>
 
         </form>
+
 
     </div>
 

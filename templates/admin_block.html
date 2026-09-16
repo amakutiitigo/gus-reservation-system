@@ -3,28 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>予約ブロック管理</title>
 
 <style>
+
 body {
     font-family: Arial, sans-serif;
     background: #f4f6f9;
     margin: 0;
 }
 
-/* 全体 */
 .container {
-    max-width: 800px;
+    max-width: 900px;
     margin: auto;
     padding: 20px;
 }
 
-/* 上部ボタン */
+.main-back {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    padding: 12px;
+    background: #777;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
 .topbar {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
 }
 
 .topbar a {
@@ -37,31 +50,6 @@ body {
     font-size: 14px;
 }
 
-.topbar a:hover {
-    opacity: 0.85;
-}
-
-/* メイン戻るボタン（追加） */
-.main-back {
-    display: inline-block;
-    width: 100%;
-    text-align: center;
-    padding: 12px 14px;
-    background: #777;
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-/* タイトル */
-h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 26px;
-}
-
-/* カード */
 .card {
     background: white;
     padding: 20px;
@@ -70,33 +58,114 @@ h2 {
     margin-bottom: 20px;
 }
 
-/* 入力 */
-form {
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h3 {
+    margin-top: 0;
+}
+
+.form-row {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
 }
 
-input {
-    flex: 1;
-    min-width: 120px;
-    padding: 12px;
+label {
+    font-weight: bold;
+}
+
+input[type="date"],
+input[type="time"] {
+    padding: 10px;
     font-size: 16px;
     border: 1px solid #ddd;
     border-radius: 8px;
 }
 
-/* 追加ボタン */
 button {
-    padding: 12px 16px;
-    font-size: 16px;
+    padding: 11px 16px;
+    font-size: 15px;
     border: none;
     border-radius: 8px;
+    cursor: pointer;
+}
+
+.primary {
     background: #4CAF50;
     color: white;
 }
 
-/* テーブル */
+.secondary {
+    background: #3498db;
+    color: white;
+}
+
+.danger {
+    background: #e74c3c;
+    color: white;
+}
+
+.gray {
+    background: #777;
+    color: white;
+}
+
+.weekdays {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 15px;
+}
+
+.weekday {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 10px;
+    background: #f0f2f5;
+    border-radius: 8px;
+}
+
+.time-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.time-row button {
+    padding: 8px 12px;
+}
+
+.individual-date {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.message {
+    padding: 12px;
+    background: #eef8ee;
+    border: 1px solid #b7dfb7;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.warning {
+    padding: 12px;
+    background: #fff4e5;
+    border: 1px solid #f0c36d;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -115,18 +184,76 @@ th {
 td {
     padding: 12px;
     border-bottom: 1px solid #eee;
+    text-align: center;
 }
 
 tr:hover {
     background: #f8f8f8;
 }
 
-/* 削除 */
-a {
-    color: #e74c3c;
-    text-decoration: none;
-    font-weight: bold;
+.remove-btn {
+    background: #e74c3c;
+    color: white;
+    padding: 7px 10px;
 }
+
+.small-note {
+    font-size: 13px;
+    color: #666;
+}
+
+.preview {
+    margin-top: 15px;
+    padding: 12px;
+    background: #f7f9fb;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.preview-row {
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+}
+
+/* =========================================
+   一括削除エリア
+========================================= */
+
+.bulk-delete-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.bulk-delete-button {
+    background: #e74c3c;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+}
+
+.selected-count {
+    font-size: 14px;
+    color: #555;
+}
+
+.select-all-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.block-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
 </style>
 </head>
 
@@ -134,57 +261,1123 @@ a {
 
 <div class="container">
 
-<!-- ★追加：メインメニュー戻る（最上部） -->
-<a href="/admin_menu" class="main-back">← メインメニューへ戻る</a>
+<a href="/admin_menu" class="main-back">
+    ← メインメニューへ戻る
+</a>
 
 <h2>予約ブロック管理</h2>
 
-<!-- ★上部メニュー -->
 <div class="topbar">
-    <a href="/export_block_excel">📥 Excel出力</a>
-    <a href="/admin">📋 予約一覧へ</a>
-    <a href="/logout">ログアウト</a>
+
+    <a href="/export_block_excel">
+        📥 Excel出力
+    </a>
+
+    <a href="/admin">
+        📋 予約一覧へ
+    </a>
+
+    <a href="/logout">
+        ログアウト
+    </a>
+
 </div>
 
-<!-- 追加 -->
+
+{% if message %}
+
+<div class="message">
+    {{ message }}
+</div>
+
+{% endif %}
+
+
+{% if conflicts %}
+
+<div class="warning">
+
+    <strong>
+        登録できなかった時間帯
+    </strong>
+
+    {% for item in conflicts %}
+
+    <div>
+        {{ item }}
+    </div>
+
+    {% endfor %}
+
+</div>
+
+{% endif %}
+
+
+<!-- =====================================================
+     単発登録
+===================================================== -->
+
 <div class="card">
 
-<form method="POST" action="/add_block">
+<h3>① 1件だけブロック</h3>
 
-    <input type="date" name="data" required>
-    <input type="time" name="start_time" required>
-    <input type="time" name="end_time" required>
+<form
+    method="POST"
+    action="/add_block"
+>
 
-    <button type="submit">＋ 追加</button>
+    <div class="form-row">
+
+        <label>
+            日付
+        </label>
+
+        <input
+            type="date"
+            name="data"
+            required
+        >
+
+        <label>
+            開始
+        </label>
+
+        <input
+            type="time"
+            name="start_time"
+            required
+        >
+
+        <label>
+            終了
+        </label>
+
+        <input
+            type="time"
+            name="end_time"
+            required
+        >
+
+        <button
+            type="submit"
+            class="primary"
+        >
+            ＋ 追加
+        </button>
+
+    </div>
 
 </form>
 
 </div>
 
-<!-- 一覧 -->
+
+<!-- =====================================================
+     一括登録
+===================================================== -->
+
+<div class="card">
+
+<h3>
+    ② 複数日・複数時間を一括ブロック
+</h3>
+
+<form
+    method="POST"
+    action="/bulk_add_block"
+    id="bulkForm"
+>
+
+
+<!-- 期間 -->
+
+<div class="form-row">
+
+    <label>
+        期間
+    </label>
+
+    <input
+        type="date"
+        name="start_date"
+        id="start_date"
+    >
+
+    <span>
+        ～
+    </span>
+
+    <input
+        type="date"
+        name="end_date"
+        id="end_date"
+    >
+
+</div>
+
+
+<p class="small-note">
+    期間を指定すると、その期間内の日付を対象にできます。
+</p>
+
+
+<!-- 曜日 -->
+
+<label>
+    対象曜日
+</label>
+
+<div class="weekdays">
+
+    <label class="weekday">
+        <input
+            type="checkbox"
+            name="weekdays"
+            value="0"
+            checked
+        >
+        月
+    </label>
+
+    <label class="weekday">
+        <input
+            type="checkbox"
+            name="weekdays"
+            value="1"
+            checked
+        >
+        火
+    </label>
+
+    <label class="weekday">
+        <input
+            type="checkbox"
+            name="weekdays"
+            value="2"
+            checked
+        >
+        水
+    </label>
+
+    <label class="weekday">
+        <input
+            type="checkbox"
+            name="weekdays"
+            value="3"
+            checked
+        >
+        木
+    </label>
+
+    <label class="weekday">
+        <input
+            type="checkbox"
+            name="weekdays"
+            value="4"
+            checked
+        >
+        金
+    </label>
+
+    <label class="weekday">
+        <input
+            type="checkbox"
+            name="weekdays"
+            value="5"
+        >
+        土
+    </label>
+
+    <label class="weekday">
+        <input
+            type="checkbox"
+            name="weekdays"
+            value="6"
+        >
+        日
+    </label>
+
+</div>
+
+
+<!-- 個別日 -->
+
+<label>
+    曜日に関係なく追加したい日
+</label>
+
+<div id="individualDates">
+
+    <div class="individual-date">
+
+        <input
+            type="date"
+            name="individual_dates"
+        >
+
+        <button
+            type="button"
+            class="remove-btn"
+            onclick="removeDate(this)"
+        >
+            削除
+        </button>
+
+    </div>
+
+</div>
+
+
+<button
+    type="button"
+    class="secondary"
+    onclick="addDate()"
+>
+    ＋ 日付を追加
+</button>
+
+
+<br><br>
+
+
+<!-- 時間 -->
+
+<label>
+    ブロックする時間帯
+</label>
+
+<div id="timeRows">
+
+    <div class="time-row">
+
+        <input
+            type="time"
+            name="start_times"
+            required
+        >
+
+        <span>
+            ～
+        </span>
+
+        <input
+            type="time"
+            name="end_times"
+            required
+        >
+
+        <button
+            type="button"
+            class="remove-btn"
+            onclick="removeTime(this)"
+        >
+            削除
+        </button>
+
+    </div>
+
+</div>
+
+
+<button
+    type="button"
+    class="secondary"
+    onclick="addTime()"
+>
+    ＋ 時間帯を追加
+</button>
+
+
+<br><br>
+
+
+<!-- プレビュー -->
+
+<button
+    type="button"
+    class="gray"
+    onclick="previewBulk()"
+>
+    👀 登録予定を確認
+</button>
+
+
+<div
+    id="preview"
+    class="preview"
+    style="display:none;"
+></div>
+
+
+<br><br>
+
+
+<button
+    type="submit"
+    class="primary"
+    onclick="return confirmBulk()"
+>
+    一括登録する
+</button>
+
+</form>
+
+</div>
+
+
+<!-- =====================================================
+     登録済み一覧
+===================================================== -->
+
+<div class="card">
+
+<h3>
+    ③ 登録済みの予約ブロック
+</h3>
+
+
+<!-- =========================================
+     一括削除
+========================================= -->
+
+<div class="bulk-delete-bar">
+
+    <button
+        type="submit"
+        form="bulkDeleteForm"
+        class="bulk-delete-button"
+    >
+        🗑 選択したブロックを削除
+    </button>
+
+    <span
+        id="selectedCount"
+        class="selected-count"
+    >
+        0件選択中
+    </span>
+
+</div>
+
+
+<!-- =========================================
+     一括削除用フォーム
+     ※テーブルとは別にする
+========================================= -->
+
+<form
+    method="POST"
+    action="/bulk_delete_block"
+    id="bulkDeleteForm"
+>
+</form>
+
+
+<!-- =========================================
+     一覧
+========================================= -->
+
 <table>
 
 <tr>
-    <th>日付</th>
-    <th>開始</th>
-    <th>終了</th>
-    <th>操作</th>
+
+    <th>
+
+        <label class="select-all-label">
+
+            <input
+                type="checkbox"
+                id="selectAll"
+                onchange="toggleAllBlocks(this)"
+            >
+
+            全選択
+
+        </label>
+
+    </th>
+
+    <th>
+        日付
+    </th>
+
+    <th>
+        開始
+    </th>
+
+    <th>
+        終了
+    </th>
+
+    <th>
+        操作
+    </th>
+
 </tr>
 
-{% for b in blocks %}
+
+{% for b in blocked_times %}
+
 <tr>
-    <td>{{ b.data }}</td>
-    <td>{{ b.start_time }}</td>
-    <td>{{ b.end_time }}</td>
+
+    <!-- 選択 -->
+
     <td>
-        <a href="/delete_block/{{ b.id }}">解除</a>
+
+        <input
+            type="checkbox"
+            name="ids"
+            value="{{ b.id }}"
+            class="block-checkbox"
+            form="bulkDeleteForm"
+            onchange="updateSelectedCount()"
+        >
+
     </td>
+
+
+    <!-- 日付 -->
+
+    <td>
+        {{ b.data }}
+    </td>
+
+
+    <!-- 開始 -->
+
+    <td>
+        {{ b.start_time }}
+    </td>
+
+
+    <!-- 終了 -->
+
+    <td>
+        {{ b.end_time }}
+    </td>
+
+
+    <!-- 個別解除 -->
+
+    <td>
+
+        <form
+            method="POST"
+            action="/delete_block/{{ b.id }}"
+            onsubmit="return confirm('この予約ブロックを解除しますか？');"
+        >
+
+            <button
+                type="submit"
+                class="remove-btn"
+            >
+                解除
+            </button>
+
+        </form>
+
+    </td>
+
 </tr>
+
 {% endfor %}
+
+
+{% if not blocked_times %}
+
+<tr>
+
+    <td colspan="5">
+        登録されている予約ブロックはありません。
+    </td>
+
+</tr>
+
+{% endif %}
+
 
 </table>
 
 </div>
+
+
+</div>
+
+
+<script>
+
+
+// =====================================================
+// 個別日付追加
+// =====================================================
+
+function addDate() {
+
+    const container =
+        document.getElementById(
+            "individualDates"
+        );
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+    div.className =
+        "individual-date";
+
+    div.innerHTML = `
+
+        <input
+            type="date"
+            name="individual_dates"
+        >
+
+        <button
+            type="button"
+            class="remove-btn"
+            onclick="removeDate(this)"
+        >
+            削除
+        </button>
+
+    `;
+
+    container.appendChild(div);
+
+}
+
+
+function removeDate(button) {
+
+    const row =
+        button.parentElement;
+
+    row.remove();
+
+}
+
+
+// =====================================================
+// 時間帯追加
+// =====================================================
+
+function addTime() {
+
+    const container =
+        document.getElementById(
+            "timeRows"
+        );
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+    div.className =
+        "time-row";
+
+    div.innerHTML = `
+
+        <input
+            type="time"
+            name="start_times"
+            required
+        >
+
+        <span>
+            ～
+        </span>
+
+        <input
+            type="time"
+            name="end_times"
+            required
+        >
+
+        <button
+            type="button"
+            class="remove-btn"
+            onclick="removeTime(this)"
+        >
+            削除
+        </button>
+
+    `;
+
+    container.appendChild(div);
+
+}
+
+
+function removeTime(button) {
+
+    const rows =
+        document.querySelectorAll(
+            ".time-row"
+        );
+
+    if (rows.length <= 1) {
+
+        alert(
+            "時間帯は1つ以上必要です。"
+        );
+
+        return;
+
+    }
+
+    button.parentElement.remove();
+
+}
+
+
+// =====================================================
+// 対象日を作る
+// =====================================================
+
+function getTargetDates() {
+
+    const result = [];
+
+    const start =
+        document.getElementById("start_date").value;
+
+    const end =
+        document.getElementById("end_date").value;
+
+    const weekdays =
+        Array.from(
+            document.querySelectorAll(
+                'input[name="weekdays"]:checked'
+            )
+        ).map(
+            el => Number(el.value)
+        );
+
+
+    if (start && end) {
+
+        const current =
+            new Date(start + "T00:00:00");
+
+        const last =
+            new Date(end + "T00:00:00");
+
+
+        while (current <= last) {
+
+            if (
+                weekdays.includes(
+                    (current.getDay() + 6) % 7
+                )
+            ) {
+
+                // UTC変換しないで、
+                // 日本時間の年月日をそのまま取得する
+                const year =
+                    current.getFullYear();
+
+                const month =
+                    String(
+                        current.getMonth() + 1
+                    ).padStart(2, "0");
+
+                const day =
+                    String(
+                        current.getDate()
+                    ).padStart(2, "0");
+
+                result.push(
+                    `${year}-${month}-${day}`
+                );
+            }
+
+            current.setDate(
+                current.getDate() + 1
+            );
+        }
+    }
+
+
+    document
+        .querySelectorAll(
+            'input[name="individual_dates"]'
+        )
+        .forEach(input => {
+
+            if (
+                input.value &&
+                !result.includes(input.value)
+            ) {
+
+                result.push(input.value);
+
+            }
+
+        });
+
+
+    result.sort();
+
+    return result;
+}
+
+
+// =====================================================
+// 時間帯を取得
+// =====================================================
+
+function getTimes() {
+
+    const result = [];
+
+    const starts =
+        document.querySelectorAll(
+            'input[name="start_times"]'
+        );
+
+    const ends =
+        document.querySelectorAll(
+            'input[name="end_times"]'
+        );
+
+
+    for (
+        let i = 0;
+        i < starts.length;
+        i++
+    ) {
+
+        if (
+            starts[i].value &&
+            ends[i].value
+        ) {
+
+            result.push({
+
+                start:
+                    starts[i].value,
+
+                end:
+                    ends[i].value
+
+            });
+
+        }
+
+    }
+
+
+    return result;
+
+}
+
+
+// =====================================================
+// プレビュー
+// =====================================================
+
+function previewBulk() {
+
+    const dates =
+        getTargetDates();
+
+    const times =
+        getTimes();
+
+    const preview =
+        document.getElementById(
+            "preview"
+        );
+
+
+    if (!dates.length) {
+
+        alert(
+            "対象日を指定してください。"
+        );
+
+        return;
+
+    }
+
+
+    if (!times.length) {
+
+        alert(
+            "時間帯を指定してください。"
+        );
+
+        return;
+
+    }
+
+
+    let html = "";
+
+    let count = 0;
+
+
+    dates.forEach(
+        date => {
+
+            times.forEach(
+                time => {
+
+                    html += `
+
+                        <div class="preview-row">
+
+                            ${date}
+                            　${time.start}～${time.end}
+
+                        </div>
+
+                    `;
+
+                    count++;
+
+                }
+            );
+
+        }
+    );
+
+
+    preview.innerHTML =
+        `<strong>
+            登録予定：${count}件
+        </strong>`
+        + html;
+
+
+    preview.style.display =
+        "block";
+
+}
+
+
+// =====================================================
+// 一括登録確認
+// =====================================================
+
+function confirmBulk() {
+
+    const dates =
+        getTargetDates();
+
+    const times =
+        getTimes();
+
+
+    if (!dates.length) {
+
+        alert(
+            "対象日を指定してください。"
+        );
+
+        return false;
+
+    }
+
+
+    if (!times.length) {
+
+        alert(
+            "時間帯を指定してください。"
+        );
+
+        return false;
+
+    }
+
+
+    for (
+        const time of times
+    ) {
+
+        if (
+            time.start >=
+            time.end
+        ) {
+
+            alert(
+                "終了時間は開始時間より後にしてください。"
+            );
+
+            return false;
+
+        }
+
+    }
+
+
+    const count =
+        dates.length *
+        times.length;
+
+
+    return confirm(
+
+        "以下の内容で一括登録します。\n\n"
+
+        + "対象日："
+        + dates.length
+        + "日\n"
+
+        + "時間帯："
+        + times.length
+        + "件\n"
+
+        + "最大登録件数："
+        + count
+        + "件\n\n"
+
+        + "予約が入っている時間帯や、"
+        + "既にブロックされている時間帯は"
+        + "自動的にスキップされます。\n\n"
+
+        + "一括登録しますか？"
+
+    );
+
+}
+
+
+// =====================================================
+// 全選択
+// =====================================================
+
+function toggleAllBlocks(
+    checkbox
+) {
+
+    const boxes =
+        document.querySelectorAll(
+            ".block-checkbox"
+        );
+
+
+    boxes.forEach(
+        box => {
+
+            box.checked =
+                checkbox.checked;
+
+        }
+    );
+
+
+    updateSelectedCount();
+
+}
+
+
+// =====================================================
+// 選択件数表示
+// =====================================================
+
+function updateSelectedCount() {
+
+    const checked =
+        document.querySelectorAll(
+            ".block-checkbox:checked"
+        );
+
+
+    document.getElementById(
+        "selectedCount"
+    ).textContent =
+        checked.length
+        + "件選択中";
+
+
+    // 全選択チェックの状態も更新
+
+    const all =
+        document.querySelectorAll(
+            ".block-checkbox"
+        );
+
+    const selectAll =
+        document.getElementById(
+            "selectAll"
+        );
+
+
+    if (
+        all.length === 0
+    ) {
+
+        selectAll.checked =
+            false;
+
+        return;
+
+    }
+
+
+    selectAll.checked =
+        checked.length ===
+        all.length;
+
+}
+
+
+// =====================================================
+// 一括削除確認
+// =====================================================
+
+document
+    .getElementById(
+        "bulkDeleteForm"
+    )
+    .addEventListener(
+        "submit",
+        function(event) {
+
+            const checked =
+                document.querySelectorAll(
+                    ".block-checkbox:checked"
+                );
+
+
+            if (
+                checked.length === 0
+            ) {
+
+                alert(
+                    "削除するブロックを選択してください。"
+                );
+
+                event.preventDefault();
+
+                return;
+
+            }
+
+
+            const ok =
+                confirm(
+
+                    checked.length
+                    + "件の予約ブロックを削除しますか？"
+
+                );
+
+
+            if (!ok) {
+
+                event.preventDefault();
+
+            }
+
+        }
+    );
+
+</script>
 
 </body>
 </html>

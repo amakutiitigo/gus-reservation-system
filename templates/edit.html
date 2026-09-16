@@ -103,7 +103,7 @@ button {
 
 <div class="current-box">
 <strong>現在の予約</strong><br>
-📅 {{ data[1] }}<br>
+📅 {{ reservation.data }}<br>
 ⏰ <span id="currentTime"></span>
 </div>
 
@@ -128,20 +128,20 @@ button {
 <select id="time_select"></select>
 
 <form method="POST" action="/edit_confirm">
-<input type="hidden" name="data" id="data" value="{{ data[1] }}">
-<input type="hidden" name="time" id="time" value="{{ data[2] }}">
+<input type="hidden" name="data" id="data" value="{{ reservation.data }}">
+<input type="hidden" name="time" id="time" value="{{ reservation.time }}">
 
 <div>氏名</div>
-<input type="text" name="name" value="{{ data[3] }}" required>
+<input type="text" name="name" value="{{ reservation.name }}" required>
 
 <div>電話番号</div>
-<input type="text" name="phone" value="{{ data[4] }}" required>
+<input type="text" name="phone" value="{{ reservation.phone }}" required>
 
 <div>住所</div>
-<input type="text" name="address" value="{{ data[5] }}" required>
+<input type="text" name="address" value="{{ reservation.address }}" required>
 
 <div>メールアドレス（任意）</div>
-<input type="email" name="email" value="{{ data[6] }}">
+<input type="email" name="email" value="{{ reservation.email or '' }}">
 
 <button type="submit">確認画面へ</button>
 </form>
@@ -170,8 +170,8 @@ function addOneDay(dateStr){
     return `${y}-${m}-${da}`;
 }
 
-let initDate = "{{ data[1] or '' }}";
-let initTime = "{{ data[2][:5] if data and data[2] else '' }}";
+let initDate = "{{ reservation.data or '' }}";
+let initTime = "{{ reservation.time[:5] if reservation.time else '' }}";
 let selectedDate = initDate;
 
 function formatRange(t){
@@ -355,7 +355,24 @@ document.querySelector('form[action="/edit_confirm"]').addEventListener("submit"
     let newDate = document.getElementById("data").value;
     let newTime = document.getElementById("time").value;
 
-    if(newDate === initDate && newTime === initTime){
+    let newName = document.querySelector('input[name="name"]').value;
+    let newPhone = document.querySelector('input[name="phone"]').value;
+    let newAddress = document.querySelector('input[name="address"]').value;
+    let newEmail = document.querySelector('input[name="email"]').value;
+
+    let currentName = "{{ reservation.name or '' }}";
+    let currentPhone = "{{ reservation.phone or '' }}";
+    let currentAddress = "{{ reservation.address or '' }}";
+    let currentEmail = "{{ reservation.email or '' }}";
+
+    if(
+        newDate === initDate &&
+        newTime === initTime &&
+        newName === currentName &&
+        newPhone === currentPhone &&
+        newAddress === currentAddress &&
+        newEmail === currentEmail
+    ){
         alert("変更内容がありません");
         e.preventDefault();
     }

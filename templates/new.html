@@ -5,40 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>新規予約</title>
 
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<link
+    href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
+    rel="stylesheet"
+>
+
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
+
     body {
         margin: 0;
         font-family: sans-serif;
         background: #f5f5f5;
-    
-        /* ★全体1.5倍 */
         font-size: 24px;
         line-height: 1.6;
     }
-    
+
     .container {
-        max-width: 700px; /* 少し広げる */
+        max-width: 700px;
         margin: auto;
         padding: 15px;
     }
-    
+
     h2 {
         font-size: 36px;
         margin-bottom: 15px;
     }
-    
+
     #calendar {
         width: 100%;
-        aspect-ratio: 1 / 1;  /* ★これが本体（正方形） */
+        aspect-ratio: 1 / 1;
         background: white;
-    border-radius: 12px;
-    padding: 10px;
+        border-radius: 12px;
+        padding: 10px;
+        box-sizing: border-box;
     }
-    
-    /* 注意文 */
+
     .notice {
         padding: 15px;
         background: #fff3cd;
@@ -46,15 +49,15 @@
         margin-bottom: 8px;
         font-size: 20px;
     }
-    
-    /* ラベル */
-    label, div {
+
+    label,
+    div {
         font-size: 22px;
         margin-top: 10px;
     }
-    
-    /* 入力 */
-    input, select {
+
+    input,
+    select {
         width: 100%;
         padding: 18px;
         margin-top: 8px;
@@ -62,8 +65,7 @@
         box-sizing: border-box;
         border-radius: 10px;
     }
-    
-    /* ボタン */
+
     button {
         width: 100%;
         padding: 20px;
@@ -74,117 +76,191 @@
         border: none;
         border-radius: 10px;
     }
-    
+
     button:active {
         transform: scale(0.98);
     }
 
     .fc-toolbar-title {
-    font-size: 26px !important;
+        font-size: 26px !important;
     }
 
-    /* マスを正方形寄りにする */
     .fc .fc-daygrid-day-frame {
         min-height: 80px;
         height: auto !important;
     }
 
-    /* 日付の行間を詰める */
     .fc .fc-daygrid-day-top {
-        padding: 2px 4px;   /* 上下を小さく */
-        line-height: 1.1;   /* 行間を詰める */
+        padding: 2px 4px;
+        line-height: 1.1;
     }
 
-    /* 日付の数字そのもの */
     .fc .fc-daygrid-day-number {
         padding: 0;
-        font-size: 20px;    /* 必要なら微調整 */
+        font-size: 20px;
     }
 
     .fc-daygrid-day.bg-holiday {
         background: #eee !important;
         opacity: 0.6;
-        pointer-events: none;   /* ←追加：クリック不可 */
-        cursor: not-allowed;    /* ←追加：触れない見た目 */
+        pointer-events: none;
+        cursor: not-allowed;
     }
-    .bg-current { background: #90caf9 !important; }
-    .bg-selected { background: #ffe082 !important; }
 
-    </style>
+    .bg-current {
+        background: #90caf9 !important;
+    }
+
+    .bg-selected {
+        background: #ffe082 !important;
+    }
+
+</style>
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>新規予約</h2>
+    <h2>新規予約</h2>
 
-<div style="padding:10px; background:#fff3cd; border-radius:8px; margin-bottom:5px;">
-    ※予約は24時間後以降のみ可能です。
+    <div style="
+        padding:10px;
+        background:#fff3cd;
+        border-radius:8px;
+        margin-bottom:5px;
+    ">
+        ※予約は24時間後以降のみ可能です。
+    </div>
+
+    <div style="
+        padding:10px;
+        background:#fff3cd;
+        border-radius:8px;
+    ">
+        ※土日祝日は予約不可。その他、予約できない日時は選択できません。
+    </div>
+
+    <div>お客様コード</div>
+
+    <input
+        type="text"
+        value="{{ session.get('code') }}"
+        readonly
+    >
+
+    <div style="
+        background:#fff3cd;
+        padding:15px;
+        border-radius:10px;
+        margin-bottom:10px;
+        font-size:22px;
+        font-weight:bold;
+        text-align:center;
+    ">
+        予約可能期間：<br>
+        {{ start_data }} ～ {{ end_data }}
+    </div>
+
+    <div id="calendar"></div>
+
+    <div>予約時間</div>
+
+    <select id="time_select">
+        <option value="">日付を選択してください</option>
+    </select>
+
+
+    <form method="POST" action="/confirm">
+
+        <input
+            type="hidden"
+            name="data"
+            id="data"
+            required
+        >
+
+        <input
+            type="hidden"
+            name="time"
+            id="time"
+            required
+        >
+
+        <div>氏名</div>
+
+        <input
+            type="text"
+            name="name"
+            value=""
+            required
+        >
+
+
+        <div>電話番号</div>
+
+        <input
+            type="text"
+            name="phone"
+            value=""
+            required
+        >
+
+
+        <div>住所</div>
+
+        <input
+            type="text"
+            name="address"
+            value=""
+            required
+        >
+
+
+        <div>メールアドレス（任意）</div>
+
+        <input
+            type="email"
+            name="email"
+            value=""
+            placeholder="入力すると、予約確定後にメールが届きます"
+            style="font-size:18px;"
+        >
+
+        <div style="
+            font-size:18px;
+            color:#666;
+            margin-top:5px;
+        ">
+            ※メールで返信をご希望の場合は入力してください
+        </div>
+
+
+        <button type="submit">
+            確認画面へ
+        </button>
+
+    </form>
+
 </div>
 
-<div style="padding:10px; background:#fff3cd; border-radius:8px;">
-    ※土日祝日は予約不可。その他、予約できない日時は選択できません。
-</div>
 
-<div>お客様コード</div>
-<input type="text" value="{{ session.get('code') }}" readonly>
+<div
+    id="loadingOverlay"
+    style="
+        position: fixed;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        background:rgba(0,0,0,0.5);
+        display:none;
+        justify-content:center;
+        align-items:center;
+        z-index:9999;
+    "
+>
 
-<div style="
-    background:#fff3cd;
-    padding:15px;
-    border-radius:10px;
-    margin-bottom:10px;
-    font-size:22px;
-    font-weight:bold;
-    text-align:center;
-">
-    予約可能期間：<br>{{ start_data }} ～ {{ end_data }}
-</div>
-
-<div id="calendar"></div>
-
-<div>予約時間</div>
-<select id="time_select"></select>
-
-<form method="POST" action="/confirm">
-<input type="hidden" name="data" id="data" required>
-<input type="hidden" name="time" id="time" required>
-
-<div>氏名</div>
-<input type="text" name="name" value="{{ data.name }}" required>
-
-<div>電話番号</div>
-<input type="text" name="phone" value="{{ data.phone }}" required>
-
-<div>住所</div>
-<input type="text" name="address" value="{{ data.address }}" required>
-
-<div>メールアドレス（任意）</div>
-<input type="email" name="email" value="{{ data.email }}"
-       placeholder="入力すると、予約確定後にメールが届きます"
-       style="font-size:18px;">
-
-<div style="font-size:18px; color:#666; margin-top:5px;">
-    ※メールで返信をご希望の場合は入力してください
-</div>
-
-
-<button type="submit">確認画面へ</button>
-</form>
-
-</div>
-
-<div id="loadingOverlay" style="
-    position: fixed;
-    top:0; left:0;
-    width:100%; height:100%;
-    background: rgba(0,0,0,0.5);
-    display:none;
-    justify-content:center;
-    align-items:center;
-    z-index:9999;
-">
     <div style="
         background:white;
         padding:40px;
@@ -192,251 +268,662 @@
         text-align:center;
         font-size:24px;
     ">
-        <div style="font-size:40px;">⏳</div>
+
+        <div style="font-size:40px;">
+            ⏳
+        </div>
+
         しばらくお待ちください...
+
     </div>
+
 </div>
+
 
 <script>
 
-    let startDate = "{{ start_data or '' }}";
-    let endDate = "{{ end_data or '' }}";
+/* =========================================
+   予約設定
+========================================= */
 
-    let startTime = "{{ start_time or '09:30' }}";
-    let endTime = "{{ end_time or '17:00' }}";
-    let interval = {{ interval or 30 }};
-    
-    let initDate = "{{ data.data or '' }}";
-    let initTime = "{{ data.time or '' }}";
-    let selectedDate = "";
-    
-    let holidays = [];
-    
+let startDate = "{{ start_data or '' }}";
+let endDate = "{{ end_data or '' }}";
 
-    function formatRange(timeStr){
+let startTime = "{{ start_time or '09:30' }}";
+let endTime = "{{ end_time or '17:00' }}";
 
-        let [h, m] = timeStr.split(":").map(Number);
+let interval = {{ interval or 30 }};
 
-        let start = new Date(2000, 0, 1, h, m);
-        let end = new Date(start.getTime() + interval * 60000);
 
-        let sh = String(start.getHours()).padStart(2, '0');
-        let sm = String(start.getMinutes()).padStart(2, '0');
-        let eh = String(end.getHours()).padStart(2, '0');
-        let em = String(end.getMinutes()).padStart(2, '0');
+/* 新規予約なので初期値なし */
 
-        return `${sh}:${sm}～${eh}:${em}`;
+let initDate = "";
+let initTime = "";
+
+let selectedDate = "";
+
+let holidays = [];
+
+
+/* =========================================
+   日付フォーマット
+========================================= */
+
+function formatDate(date) {
+
+    let y = date.getFullYear();
+
+    let m = String(
+        date.getMonth() + 1
+    ).padStart(2, "0");
+
+    let d = String(
+        date.getDate()
+    ).padStart(2, "0");
+
+    return `${y}-${m}-${d}`;
+}
+
+
+/* =========================================
+   終了日の翌日
+========================================= */
+
+function addOneDay(dateStr) {
+
+    if (!dateStr) {
+        return undefined;
     }
 
-    /* =========================
-       日付フォーマット
-    ========================= */
-    function formatDate(d){
-        let y = d.getFullYear();
-        let m = String(d.getMonth()+1).padStart(2,'0');
-        let da = String(d.getDate()).padStart(2,'0');
-        return `${y}-${m}-${da}`;
+    let d = new Date(dateStr);
+
+    d.setDate(
+        d.getDate() + 1
+    );
+
+    return formatDate(d);
+}
+
+
+/* =========================================
+   時間帯表示
+========================================= */
+
+function formatRange(timeStr) {
+
+    let parts = timeStr.split(":");
+
+    let h = Number(parts[0]);
+    let m = Number(parts[1]);
+
+    let start = new Date(
+        2000,
+        0,
+        1,
+        h,
+        m
+    );
+
+    let end = new Date(
+        start.getTime() +
+        interval * 60000
+    );
+
+    let sh = String(
+        start.getHours()
+    ).padStart(2, "0");
+
+    let sm = String(
+        start.getMinutes()
+    ).padStart(2, "0");
+
+    let eh = String(
+        end.getHours()
+    ).padStart(2, "0");
+
+    let em = String(
+        end.getMinutes()
+    ).padStart(2, "0");
+
+    return `${sh}:${sm}～${eh}:${em}`;
+}
+
+
+/* =========================================
+   祝日取得
+========================================= */
+
+async function loadHolidays() {
+
+    try {
+
+        const response = await fetch(
+            "https://holidays-jp.github.io/api/v1/date.json"
+        );
+
+        const json = await response.json();
+
+        holidays = Object.keys(json);
+
+        console.log(
+            "祝日取得OK",
+            holidays
+        );
+
+    } catch (error) {
+
+        console.log(
+            "祝日取得失敗",
+            error
+        );
+
+        holidays = [];
+
     }
-    
-    function addOneDay(dateStr){
-        if(!dateStr) return undefined;
-        let d = new Date(dateStr);
-        d.setDate(d.getDate() + 1);
-        return formatDate(d);
+}
+
+
+/* =========================================
+   土日祝判定
+========================================= */
+
+function isHoliday(dateStr) {
+
+    if (!dateStr) {
+        return false;
     }
-    
-    /* =========================
-       祝日取得
-    ========================= */
-    async function loadHolidays(){
-        try {
-            const res = await fetch("https://holidays-jp.github.io/api/v1/date.json");
-            const json = await res.json();
 
-            holidays = Object.keys(json);
+    if (
+        holidays.includes(dateStr)
+    ) {
+        return true;
+    }
 
-            console.log("祝日取得OK", holidays);
+    let parts =
+        dateStr.split("-").map(Number);
 
-        } catch(e){
-            console.log("祝日取得失敗", e);
-            holidays = [];
+    let y = parts[0];
+    let m = parts[1];
+    let d = parts[2];
+
+    let date = new Date(
+        y,
+        m - 1,
+        d
+    );
+
+    let day = date.getDay();
+
+    return (
+        day === 0 ||
+        day === 6
+    );
+}
+
+
+/* =========================================
+   24時間制限
+========================================= */
+
+function isBeforeLimit(
+    dateStr,
+    timeStr
+) {
+
+    let parts =
+        timeStr.split(":").map(Number);
+
+    let h = parts[0];
+    let m = parts[1];
+
+    let dateParts =
+        dateStr.split("-");
+
+    let y = Number(dateParts[0]);
+    let mo = Number(dateParts[1]);
+    let d = Number(dateParts[2]);
+
+    let target = new Date(
+        y,
+        mo - 1,
+        d,
+        h,
+        m
+    );
+
+    let now = new Date();
+
+    let limit = new Date(
+        now.getTime() +
+        24 * 60 * 60 * 1000
+    );
+
+    return target < limit;
+}
+
+
+/* =========================================
+   時間帯取得
+========================================= */
+
+function loadTimes(date) {
+
+    const select =
+        document.getElementById(
+            "time_select"
+        );
+
+    select.innerHTML =
+        '<option value="">時間帯を読み込み中...</option>';
+
+    fetch(
+        "/get_times?data=" +
+        encodeURIComponent(date)
+    )
+
+    .then(response => {
+
+        if (!response.ok) {
+
+            throw new Error(
+                "HTTP " +
+                response.status
+            );
+
         }
-    }
-    
-    function isHoliday(dateStr){
-        if(!dateStr) return false;
-    
-        if(holidays.includes(dateStr)) return true;
-    
-        let [y,m,d] = dateStr.split("-").map(Number);
-        let dt = new Date(y, m-1, d);
-    
-        return dt.getDay() === 0 || dt.getDay() === 6;
-    }
-    
 
-    /* =========================
-       24時間制限
-    ========================= */
-    function isBeforeLimit(dateStr, timeStr){
-        let [h,m] = timeStr.split(":").map(Number);
-        let [y,mo,d] = dateStr.split("-");
-    
-        let target = new Date(y, mo-1, d, h, m);
-        let now = new Date();
-        let limit = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    
-        return target < limit;
-    }
-    
-    /* =========================
-       時間取得
-    ========================= */
-    function loadTimes(date){
+        return response.json();
 
-        fetch('/get_times?data=' + date)
-        .then(res => res.json())
-        .then(list => {
-            console.log(list);
+    })
 
-            let select = document.getElementById("time_select");
-            select.innerHTML = "";
+    .then(list => {
 
-            let hasOption = false;
+        console.log(
+            "get_times response:",
+            list
+        );
 
-            list.forEach(t => {
+        select.innerHTML = "";
 
-                if(isBeforeLimit(date, t)) return;
+        if (!list || list.length === 0) {
 
-                hasOption = true;
+            select.innerHTML =
+                '<option value="">予約できる時間帯がありません</option>';
 
-                let opt = document.createElement("option");
-                opt.value = t;
-                opt.text = formatRange(t);
+            document.getElementById(
+                "time"
+            ).value = "";
 
-                if(t === initTime){
-                    opt.selected = true;
-                }
+            return;
+        }
 
-                select.appendChild(opt);
-            });
 
-            if(hasOption){
-                document.getElementById("time").value = select.value;
-            } else {
-                document.getElementById("time").value = "";
+        list.forEach(
+            function(timeStr) {
+
+                let option =
+                    document.createElement(
+                        "option"
+                    );
+
+                option.value =
+                    timeStr;
+
+                option.text =
+                    formatRange(
+                        timeStr
+                    );
+
+                select.appendChild(
+                    option
+                );
+
             }
+        );
 
-            select.onchange = () => {
-                document.getElementById("time").value = select.value;
+
+        // 最初の時間帯を選択
+        document.getElementById(
+            "time"
+        ).value =
+            select.value;
+
+
+        select.onchange =
+            function() {
+
+                document.getElementById(
+                    "time"
+                ).value =
+                    select.value;
+
             };
 
-        });
-    };
-    
-    /* =========================
-       カレンダー本体
-    ========================= */
-    document.addEventListener("DOMContentLoaded", async function(){
-    
+    })
+
+    .catch(error => {
+
+        console.error(
+            "get_times エラー:",
+            error
+        );
+
+        select.innerHTML =
+            '<option value="">時間帯を取得できませんでした</option>';
+
+        document.getElementById(
+            "time"
+        ).value = "";
+
+    });
+
+}
+
+
+/* =========================================
+   カレンダー
+========================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async function() {
+
         await loadHolidays();
-    
-        let calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
-    
-            initialView: "dayGridMonth",
-            locale: "ja",
-            height: "auto",
-            firstDay: 1,
-    
-            validRange: (startDate && endDate) ? {
-                start: startDate,
-                end: addOneDay(endDate)
-            } : undefined,
-    
-            showNonCurrentDates: false,
-            fixedWeekCount: false,
-    
-            /* =========================
-               日付装飾
-            ========================= */
-            dayCellDidMount: function(arg){
-    
-                let dateStr = formatDate(arg.date);
-    
-                if(isHoliday(dateStr)){
-                    arg.el.classList.add("bg-holiday");
 
-                    // ★これ追加（超重要）
-                    arg.el.closest(".fc-daygrid-day").classList.add("bg-holiday");
+
+        const calendarElement =
+            document.getElementById(
+                "calendar"
+            );
+
+
+        const calendar =
+            new FullCalendar.Calendar(
+                calendarElement,
+                {
+
+                    initialView:
+                        "dayGridMonth",
+
+                    locale:
+                        "ja",
+
+                    height:
+                        "auto",
+
+                    firstDay:
+                        1,
+
+                    validRange:
+                        (
+                            startDate &&
+                            endDate
+                        )
+                        ? {
+                            start:
+                                startDate,
+
+                            end:
+                                addOneDay(
+                                    endDate
+                                )
+                        }
+                        : undefined,
+
+                    showNonCurrentDates:
+                        false,
+
+                    fixedWeekCount:
+                        false,
+
+
+                    /* =====================
+                       日付装飾
+                    ===================== */
+
+                    dayCellDidMount:
+                        function(arg) {
+
+                            let dateStr =
+                                formatDate(
+                                    arg.date
+                                );
+
+
+                            if (
+                                isHoliday(
+                                    dateStr
+                                )
+                            ) {
+
+                                arg.el.classList.add(
+                                    "bg-holiday"
+                                );
+
+                                let dayCell =
+                                    arg.el.closest(
+                                        ".fc-daygrid-day"
+                                    );
+
+                                if (dayCell) {
+
+                                    dayCell.classList.add(
+                                        "bg-holiday"
+                                    );
+
+                                }
+
+                            }
+
+
+                            if (
+                                dateStr ===
+                                initDate
+                            ) {
+
+                                arg.el.classList.add(
+                                    "bg-current"
+                                );
+
+                            }
+
+
+                            if (
+                                dateStr ===
+                                selectedDate
+                            ) {
+
+                                arg.el.classList.add(
+                                    "bg-selected"
+                                );
+
+                            }
+
+                        },
+
+
+                    /* =====================
+                       日付クリック
+                    ===================== */
+
+                    dateClick:
+                        function(info) {
+
+                            const selected =
+                                info.dateStr;
+
+                            console.log(
+                                "日付クリック:",
+                                selected
+                            );
+
+
+                            if (
+                                isHoliday(
+                                    selected
+                                )
+                            ) {
+
+                                alert(
+                                    "土日祝は予約できません"
+                                );
+
+                                return;
+
+                            }
+
+
+                            fetch(
+                                "/check_day?data=" +
+                                encodeURIComponent(
+                                    selected
+                                )
+                            )
+
+                            .then(response => {
+
+                                console.log(
+                                    "check_day status:",
+                                    response.status
+                                );
+
+
+                                if (
+                                    !response.ok
+                                ) {
+
+                                    throw new Error(
+                                        "HTTP " +
+                                        response.status
+                                    );
+
+                                }
+
+                                return response.json();
+
+                            })
+
+                            .then(result => {
+
+                                console.log(
+                                    "check_day response:",
+                                    result
+                                );
+
+
+                                if (
+                                    !result.ok
+                                ) {
+
+                                    alert(
+                                        result.message ||
+                                        "この日は予約できません"
+                                    );
+
+                                    return;
+
+                                }
+
+
+                                /* 日付選択 */
+
+                                selectedDate =
+                                    selected;
+
+
+                                document.getElementById(
+                                    "data"
+                                ).value =
+                                    selected;
+
+
+                                document
+                                    .querySelectorAll(
+                                        ".fc-daygrid-day"
+                                    )
+                                    .forEach(
+                                        function(el) {
+
+                                            el.classList.remove(
+                                                "bg-selected"
+                                            );
+
+                                        }
+                                    );
+
+
+                                info.dayEl.classList.add(
+                                    "bg-selected"
+                                );
+
+
+                                /* 時間帯取得 */
+
+                                loadTimes(
+                                    selected
+                                );
+
+                            })
+
+                            .catch(error => {
+
+                                console.error(
+                                    "check_day エラー:",
+                                    error
+                                );
+
+                                alert(
+                                    "予約可能日の確認中にエラーが発生しました。"
+                                );
+
+                            });
+
+                        }
+
                 }
-    
-                if(dateStr === initDate){
-                    arg.el.classList.add("bg-current");
-                }
-    
-                if(dateStr === selectedDate){
-                    arg.el.classList.add("bg-selected");
-                }
-            },
-    
-            /* =========================
-               クリック処理
-            ========================= */
-            dateClick: function(info){
+            );
 
-                let selected = info.dateStr;
 
-                if(isHoliday(selected)){
-                    alert("土日祝は予約できません");
-                    return;
-                }
-
-                fetch('/check_day?data=' + selected)
-                .then(res => res.json())
-                .then(res => {
-
-                    if(!res.ok){
-                        alert(res.message || "この日は予約できません");
-                        return;
-                    }
-
-                    selectedDate = selected;
-                    document.getElementById("data").value = selected;
-
-                    document.querySelectorAll(".fc-daygrid-day").forEach(el=>{
-                        el.classList.remove("bg-selected");
-                    });
-
-                    info.dayEl.classList.add("bg-selected");
-
-                    loadTimes(selected);
-                });
-            }
-    
-        });
-    
-        /* ★必ず1回だけ実行（ここ超重要） */
         calendar.render();
-    
-        /* 初期値がある場合だけ反映 */
-        if(initDate){
-            selectedDate = initDate;
-            document.getElementById("data").value = initDate;
-            loadTimes(initDate);
+
+    }
+);
+
+
+/* =========================================
+   送信時ローディング
+========================================= */
+
+window.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        const form =
+            document.querySelector(
+                "form"
+            );
+
+
+        if (form) {
+
+            form.addEventListener(
+                "submit",
+                function() {
+
+                    document.getElementById(
+                        "loadingOverlay"
+                    ).style.display =
+                        "flex";
+
+                }
+            );
+
         }
-    
-    });
-    
-    window.addEventListener("DOMContentLoaded", function(){
-        const form = document.querySelector("form");
-        if(form){
-            form.addEventListener("submit", function(){
-                document.getElementById("loadingOverlay").style.display = "flex";
-            });
-        }
-    });
-    
-    </script>
+
+    }
+);
+
+</script>
 
 </body>
 </html>

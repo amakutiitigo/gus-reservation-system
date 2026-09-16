@@ -83,9 +83,35 @@ p {
 <p>ご予約ありがとうございます。</p>
 
 <div class="info">
-    <p><b>日付：</b>{{ data.data }}</p>
-    <p><b>時間：</b><span id="time_view"></span></p>
-    <p><b>名前：</b>{{ data.name }}</p>
+
+    <p>
+        <b>お客様コード：</b>{{ data.consumer_code }}
+    </p>
+
+    <p>
+        <b>予約日：</b>{{ data.data }}
+    </p>
+
+    <p>
+        <b>予約時間：</b><span id="time_view"></span>
+    </p>
+
+    <p>
+        <b>お名前：</b>{{ data.name }}
+    </p>
+
+    <p>
+        <b>電話番号：</b>{{ data.phone }}
+    </p>
+
+    <p>
+        <b>住所：</b>{{ data.address }}
+    </p>
+
+    <p>
+        <b>メールアドレス：</b>{{ data.email }}
+    </p>
+
 </div>
 
 <a href="/" class="btn">トップへ戻る</a>
