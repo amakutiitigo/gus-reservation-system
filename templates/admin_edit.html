@@ -1,25 +1,161 @@
-<form method="POST" action="/admin_edit_save">
+<style>
+    .edit-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 30px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
 
-<input type="hidden" name="id" value="{{ data[0] }}">
+    .edit-title {
+        margin: 0 0 8px;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+    }
 
-<div>日付</div>
-<input type="date" name="date" value="{{ data[1] }}">
+    .edit-description {
+        margin: 0 0 28px;
+        text-align: center;
+        color: #666;
+        font-size: 14px;
+    }
 
-<div>時間</div>
-<input type="time" name="time" value="{{ data[2] }}">
+    .form-group {
+        margin-bottom: 20px;
+    }
 
-<div>名前</div>
-<input type="text" name="name" value="{{ data[3] }}">
+    .form-group label {
+        display: block;
+        margin-bottom: 7px;
+        font-weight: bold;
+        font-size: 14px;
+    }
 
-<div>電話</div>
-<input type="text" name="phone" value="{{ data[4] }}">
+    .form-group input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 11px 12px;
+        border: 1px solid #d5d5d5;
+        border-radius: 7px;
+        font-size: 15px;
+        background: #fafafa;
+    }
 
-<div>住所</div>
-<input type="text" name="address" value="{{ data[5] }}">
+    .form-group input:focus {
+        outline: none;
+        border-color: #777;
+        background: #ffffff;
+    }
 
-<div>メールアドレス</div>
-<input type="email" name="email" value="{{ data[6] }}">
+    .button-area {
+        margin-top: 30px;
+        text-align: center;
+    }
 
-<button type="submit">強制更新</button>
+    .update-button {
+        width: 100%;
+        padding: 13px;
+        border: none;
+        border-radius: 7px;
+        background: #333;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+    }
 
-</form>
+    .update-button:hover {
+        opacity: 0.85;
+    }
+</style>
+
+
+<div class="edit-container">
+
+    <h1 class="edit-title">予約内容の強制編集</h1>
+
+    <p class="edit-description">
+        予約内容を変更できます
+    </p>
+
+    <div class="customer-code">
+        お客様コード：{{ reservation['consumer_code'] }}
+    </div>
+
+    <div style="height: 20px;"></div>
+
+    <form method="POST" action="/admin_edit_save">
+
+        <input type="hidden" name="id" value="{{ reservation['id'] }}">
+
+        <div class="form-group">
+            <label for="data">予約日付</label>
+            <input
+                type="date"
+                id="data"
+                name="data"
+                value="{{ reservation['data'] }}"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="time">予約開始時間</label>
+            <input
+                type="time"
+                id="time"
+                name="time"
+                value="{{ reservation['time'] }}"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="name">名前</label>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                value="{{ reservation['name'] }}"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="phone">電話</label>
+            <input
+                type="text"
+                id="phone"
+                name="phone"
+                value="{{ reservation['phone'] }}"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="address">住所</label>
+            <input
+                type="text"
+                id="address"
+                name="address"
+                value="{{ reservation['address'] }}"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="email">メールアドレス</label>
+            <input
+                type="email"
+                id="email"
+                name="email"
+                value="{{ reservation['email'] }}"
+            >
+        </div>
+
+        <div class="button-area">
+            <button type="submit" class="update-button">
+                強制更新
+            </button>
+        </div>
+
+    </form>
+
+</div>
