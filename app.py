@@ -1711,145 +1711,6 @@ def export_block_excel():
 # ブロック追加
 # =========================================================
 
-@app.route(
-    "/add_block",
-    methods=["POST"]
-)
-def add_block():
-
-    if not session.get("admin_logged_in"):
-
-        return redirect(
-            url_for("login")
-        )
-
-
-    data = (
-        request.form.get("data")
-        or ""
-    ).strip()
-
-    start_time = (
-        request.form.get("start_time")
-        or ""
-    ).strip()
-
-    end_time = (
-        request.form.get("end_time")
-        or ""
-    ).strip()
-
-
-    if not data or not start_time or not end_time:
-
-        return "入力が不足しています。", 400
-
-
-    if start_time >= end_time:
-
-        return "終了時間は開始時間より後にしてください。", 400
-
-
-    # -----------------------------------------------------
-    # 同一ブロック確認
-    # -----------------------------------------------------
-
-    duplicate = (
-        supabase
-        .table("blocked_times")
-        .select("id")
-        .eq("data", data)
-        .eq("start_time", start_time)
-        .eq("end_time", end_time)
-        .execute()
-    )
-
-
-    if duplicate.data:
-
-        return "同じ予約不可時間がすでに登録されています。", 400
-
-
-    # -----------------------------------------------------
-    # 既存予約確認
-    # -----------------------------------------------------
-
-    reservations = (
-        supabase
-        .table("reservations")
-        .select("time")
-        .eq("data", data)
-        .eq("is_deleted", False)
-        .execute()
-    )
-
-
-    interval = get_reservation_interval()
-
-
-    start_dt = datetime.strptime(
-        start_time,
-        "%H:%M"
-    )
-
-    end_dt = datetime.strptime(
-        end_time,
-        "%H:%M"
-    )
-
-
-    for reservation in reservations.data or []:
-
-        reservation_time = reservation.get(
-            "time"
-        )
-
-        if not reservation_time:
-            continue
-
-
-        reservation_dt = datetime.strptime(
-            reservation_time,
-            "%H:%M"
-        )
-
-
-        slot_end = (
-            reservation_dt
-            + timedelta(minutes=interval)
-        )
-
-
-        if (
-            reservation_dt < end_dt
-            and slot_end > start_dt
-        ):
-
-            return (
-                "その時間帯には既に予約があります。"
-            ), 400
-
-
-    # -----------------------------------------------------
-    # ブロック登録
-    # -----------------------------------------------------
-
-    supabase.table(
-        "blocked_times"
-    ).insert(
-        {
-            "data": data,
-            "start_time": start_time,
-            "end_time": end_time
-        }
-    ).execute()
-
-
-    return redirect(
-        url_for("admin_block")
-    )
-
-
 @app.route("/bulk_add_block", methods=["POST"])
 def bulk_add_block():
     if not session.get("admin_logged_in"):
@@ -1995,7 +1856,6 @@ def bulk_add_block():
     # ==========================================
 
     registered_count = 0
-    duplicate_count = 0
     reservation_conflict_count = 0
 
     conflicts = []
@@ -2011,7 +1871,7 @@ def bulk_add_block():
         reservation_result = (
             supabase
             .table("reservations")
-            .select("time,name")
+            .select("time,name,consumer_code")
             .eq("data", data)
             .eq("is_deleted", False)
             .execute()
@@ -2095,6 +1955,11 @@ def bulk_add_block():
 
                     reservation_name = (
                         reservation.get("name")
+                       or ""
+                    )
+
+                    consumer_code = (
+                        reservation.get("consumer_code")
                         or ""
                     )
 
@@ -2102,7 +1967,7 @@ def bulk_add_block():
                         f"{data} "
                         f"{start_time}～{end_time}："
                         f"既に予約があります"
-                        f"（{reservation_name}）"
+                        f"（{reservation_name}／お客様コード：{consumer_code}）"
                     )
 
                     break
@@ -2160,8 +2025,8 @@ def bulk_add_block():
                 # --------------------------------
 
                 if (
-                    new_start < block_end
-                    and new_end > block_start
+                    new_start <= block_end
+                    and new_end >= block_start
                 ):
 
                     overlapping_blocks.append(
@@ -2380,8 +2245,7 @@ def bulk_add_block():
         message=(
             f"一括登録完了："
             f"{registered_count}件処理、"
-            f"{duplicate_count}件スキップ、"
-            f"{reservation_conflict_count}件スキップ"
+            f"{reservation_conflict_count}件スキップ（予約あり）"
         ),
         conflicts=conflicts
     )
